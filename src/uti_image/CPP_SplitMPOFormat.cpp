@@ -115,6 +115,91 @@ int SplitMPO_main(int argc,char ** argv)
     return 1;
 }
 
+extern std::string * TheGlobNameRaw;
+
+
+int ExtractRaw_main(int argc,char ** argv)
+{
+     std::string aFullName,aPost,aSpecif;
+
+     ElInitArgMain
+     (
+           argc,argv,
+           LArgMain() << EAMC(aFullName,"Full name (Dir+Pat)", eSAM_IsPatFile) 
+                      << EAMC(aPost,"Prefix", eSAM_IsPatFile)
+                      << EAMC(aSpecif,"file containing SpecifFormatRaw", eSAM_IsPatFile),
+           LArgMain() 
+                      
+     );
+     cElemAppliSetFile  anEASF;
+     anEASF.Init(aFullName);
+     TheGlobNameRaw = new std::string(aSpecif);
+
+     const cInterfChantierNameManipulateur::tSet * aSI = anEASF.SetIm();
+     for (int aKf=0 ; aKf<int(aSI->size()) ; aKf++)
+     {
+        std::string aNameIn = (*aSI)[aKf];
+        Tiff_Im aTifIn =  Tiff_Im::StdConvGen(aNameIn,1,true);
+
+        std::string aNameOut =  anEASF.mDir + aPost + StdPrefix(aNameIn) + ".tif";
+
+        Tiff_Im aTifOut
+                 (
+                    aNameOut.c_str(),
+                    aTifIn.sz(),
+                    aTifIn.type_el(),
+                    aTifIn.mode_compr(),
+                    aTifIn.phot_interp()
+                 );
+        
+         ELISE_COPY(aTifIn.all_pts(),aTifIn.in(),aTifOut.out());
+     }
+
+     return EXIT_SUCCESS;
+}
+
+const std::string TheDBCRaw = "DataBaseCameraRaw";
+
+int  CPP_Extrac_StdRaw(int argc,char ** argv)
+{
+     std::string aPatImage,aPatFormat;
+     ElInitArgMain
+     (
+           argc,argv,
+           LArgMain() << EAMC(aPatImage,"Full name (Dir+Pat)", eSAM_IsPatFile) 
+                      << EAMC(aPatFormat,"Pattern for format (inXML_MicMac/DataBaseCameraRaw>)", eSAM_IsPatFile),
+           LArgMain() 
+     );
+
+
+     cElemAppliSetFile anEASM_Im(aPatImage);
+     cElemAppliSetFile anEASM_Form(Basic_XML_MM_File(TheDBCRaw+"/"+aPatFormat+".*"));
+
+      // std::cout << anEASM_Im.SetIm()->size()  << " " << anEASM_Form.SetIm()->size() << "\n";
+      // std::cout << Basic_XML_MM_File(aPatFormat+".*") << "\n";
+
+     const cInterfChantierNameManipulateur::tSet *  aSetI = anEASM_Im.SetIm();
+     const cInterfChantierNameManipulateur::tSet *  aSetF = anEASM_Form.SetIm();
+
+
+     for (int aKF = 0 ; aKF < int(aSetF->size()) ; aKF++)
+     {
+         std::string aNameF =  (*aSetF)[aKF];
+         std::string aPref,aPost,aSecPost;
+         SplitIn2ArroundCar(aNameF,'-',aPref,aPost,false);
+         SplitIn2ArroundCar(aPost,'.',aPref,aSecPost,false);
+         std::string aFullNameF =   Basic_XML_MM_File(TheDBCRaw+"/" + aNameF);
+         // std::cout << aFullNameF << "\n";
+         // std::cout << aPref << "\n";
+         for (int aKI=0 ; aKI<int(aSetI->size()) ; aKI++)
+         {
+             std::string aCom =  MM3dBinFile("ExtractRaw");
+         }
+     }
+      
+
+     return EXIT_SUCCESS;
+}
 
 //================================================================
 

@@ -67,6 +67,7 @@ bool TheExitOnBrkp  = false;
 // bool TheExitOnBrkp  = false;
 bool TheExitOnNan   = false;
 bool TheExitOnWarn  = false;
+bool TheGoonOnWarn  = false;
 bool TheMajickFile  = false;
 int  TheNbIterProcess = 1;
 
@@ -86,6 +87,9 @@ void throwError(std::string err)
 
 int GetCharOnBrkp()
 {
+std::cout << "TTTTTTTtttttttttttttttt\n"; getchar();
+
+
    BasicErrorHandler();
    if (TheExitOnBrkp)
       return 0;
@@ -193,6 +197,7 @@ void cEliseFatalErrorHandler::cEFEH_OnErreur(const char * mes,const char * file,
     msg += "|          at line : " + sl.str()  +                        "\n";
     msg += "|          of file : " + sf.str()  +                        "\n";
     msg += "-------------------------------------------------------------\n";
+// getchar();
 
     throwError(msg);
 
@@ -203,7 +208,11 @@ void cEliseFatalErrorHandler::cEFEH_OnErreur(const char * mes,const char * file,
 void  elise_fatal_error(const char * mes,const char * file,int line)
 {
    BasicErrorHandler();
-   cEliseFatalErrorHandler::CurHandler()->cEFEH_OnErreur(mes,file,line);
+   cEliseFatalErrorHandler *ptrCurHandler = cEliseFatalErrorHandler::CurHandler();
+   if (ptrCurHandler != 0)
+   {
+	   ptrCurHandler->cEFEH_OnErreur(mes, file, line);
+   }
 }
 
 /*****************************************************************/
@@ -364,6 +373,7 @@ cElWarning cElWarning::OrhoLocOnlyXCste("For now RedrLocAnam only works with X=C
 
 cElWarning cElWarning::ToleranceSurPoseLibre("Tolerance inutile avec ePoseLibre");
 cElWarning cElWarning::OnzeParamSigneIncoh("Point on two sides of cam after space ressection");
+cElWarning cElWarning::EigenValueInCholeski("Due to numerical instability, detected negative eigen value in leas square");
 
 
 int cElWarning::mNbTot = 0;

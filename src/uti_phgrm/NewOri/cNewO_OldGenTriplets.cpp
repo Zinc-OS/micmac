@@ -118,11 +118,21 @@ void cSwappablePairVPts::Swap_Create(const Swap_tArgCreate & anArg)
 }
 
 
+// NewOri.h:#define  TNbCaseP1  6  // Nombre de case sur lesquelle on discretise
+// Un certain  nombre de grandeur sont calcule en geometrie image avec des
+// densite, cette valeur fixe le nombre de cases
+
+// Par efficacite (??) ceci est géré de manière linéaire, la fonction
+// ToIndex fait la corresponace entre ces indexes lineaire et les coordonnees images
+// initiale.
+
+// mNb => memorise le nombre de point par case
+// mDens est une densite, theoriquement dans [0,1], mais comme tout les tableaux sont entier, c'est 
+// multiplie par TQuant
 
 
 
-
-static const int  TMaxNbCase = TNbCaseP1 * TNbCaseP1;
+static const int  TMaxNbCase = TNbCaseP1 * TNbCaseP1;  
 static const int  TMaxGain = 2e9;
 
 class cGTrip_AttrSom;
@@ -228,7 +238,7 @@ class cResTriplet
 typedef cTplTriplet<int> cTripletInt;
 
 
-class cAppli_GenTriplet
+class cAppli_GenTriplet : public cCommonMartiniAppli
 {
     public :
        cAppli_GenTriplet(int argc,char ** argv);
@@ -259,6 +269,7 @@ class cAppli_GenTriplet
        double                        mTimeLoadTri;
        int                           mNbLoadCple;
        int                           mNbLoadTri;
+       std::string & InOri() {return  mInOri;}
 
     private :
 
@@ -271,12 +282,10 @@ class cAppli_GenTriplet
        tGrGT                mGrT;
        tSubGrGT             mSubAll;
        std::string          mFullName;
-       std::string          mNameOriCalib;
        cElemAppliSetFile    mEASF;
        cNewO_NameManager *  mNM;
        std::map<std::string,tSomGT *> mMapS;
        std::vector<tSomGT *>          mVecAllSom;
-       //std::vector<tSomGT *>          m;
 
        std::map<cTripletInt,cResTriplet>  mMapTriplets;
        cXml_TopoTriplet                   mTopoTriplets;
@@ -294,7 +303,6 @@ class cAppli_GenTriplet
        tSomGT *                      mCurS1;
        tSomGT *                      mCurS2;
        tSomGT *                      mSomTest3;
-       bool                          mShow;
        bool                          mDebug;
        Pt2df                         mPInf;
        Pt2df                         mPSup;
@@ -308,13 +316,8 @@ class cAppli_GenTriplet
        double                        mMulQuant;
        double                        mTimeMerge;
        double                        mTimeSelec;
-       bool                          mQuick;
-       std::string                   mPrefHom;
-       std::string                   mExtName;
        double                        mRamAllowed;
        int                           mKS0;
-       std::string                   mNameModeNO;
-       eTypeModeNO                   mModeNO;
        bool                          mSelAll;
 };
 
@@ -445,6 +448,9 @@ bool cGTrip_AttrSom::InitTriplet(tSomGT * aSom,tArcGT * anA12)
           }
           
       }
+	  if (aVL13.empty()) return false;
+	  if (aVL23.empty()) return false;
+	  if (aVLByInt.empty()) return false;
 
       Pt3dr aC31 = aC3 / MedianeSup(aVL13);
       Pt3dr aC32 = aC2 + aV3Bis * MedianeSup(aVL23);
@@ -457,6 +463,34 @@ bool cGTrip_AttrSom::InitTriplet(tSomGT * aSom,tArcGT * anA12)
       mC3 = aC3I;
       mM3 =  NearestRotation((aR31.Mat() + aR31Bis.Mat())*0.5);
 
+      //  Cas ou In Ori est 
+      std::string & aInOri = mAppli->InOri();
+      if (EAMIsInit(&aInOri))
+      {
+          // Les deux premieres viennent de la paire sauvee en xml, donc pas besoin
+          bool Ok;
+          std::pair<ElRotation3D,ElRotation3D>  aPair = mAppli->NM().OriRelTripletFromExisting
+                                                (
+                                                    aInOri,
+                                                    anA12->s1().attr().mIm->Name(),
+                                                    anA12->s2().attr().mIm->Name(),
+                                                    aSom->attr().mIm->Name(),
+                                                    Ok
+                                                );
+
+          if (Ok)
+          {
+               mM3 = aPair.second.Mat();
+               mC3 = aPair.second.tr();
+/*
+               std::cout << " D2 " << euclid(aC2-aPair.first.tr())
+                         << " D3 " << euclid(mC3-aPair.second.tr())
+                         << " M2 " << (aR21.Mat()-aPair.first.Mat()).L2()
+                         << " M3 " << (mM3-aPair.second.Mat()).L2()
+                         << " \n";
+*/
+          }
+      }
 
 
      // Calcul gain et densite
@@ -466,6 +500,10 @@ bool cGTrip_AttrSom::InitTriplet(tSomGT * aSom,tArcGT * anA12)
       int aGain = ElMin(aGain1,aGain2);
 
 
+      // Initialise en fonction des points triple de 1 et 2 et 3
+      // alors que NbGlob a ete initialise en fonction des points double
+      // !!!! [NB23]  Les points triples ne sont pas un sous ensemble des point 
+      // double  pt AB et pt BC  => triple ABC sans paire AC 
       InitNb(aVP1);
       int aNbC = mAppli->NbCases();
       int * aNbGlob =  mAppli->CurS1()->attr().mNb;
@@ -473,14 +511,17 @@ bool cGTrip_AttrSom::InitTriplet(tSomGT * aSom,tArcGT * anA12)
       mGainGlob = 0;
       for (int aK=0 ; aK< aNbC ; aK++)
       {
+           // densite des 3 par rapport au 2
            double aDens = double(mNb[aK]) / double(ElMax(1,aNbGlob[aK]));
-           aDens = ElMin(1.0,aDens);
-           aDens = (aDens * TAttenDens) / (aDens * TAttenDens +1) ;
+           aDens = ElMin(1.0,aDens); // voir NB23 , la densite peut etre > 1
+           aDens = (aDens * TAttenDens) / (aDens * TAttenDens +1) ; // ?? redondant avec prec
            mDens[aK] = round_ni( (TQuant * aDens * (TAttenDens+1)) / TAttenDens);
 
            mGain[aK] = mDens[aK] * TQuant * aGain;
-           mGainGlob +=  mGain[aK] * aPdsGlob[aK];
-
+           mGainGlob +=  mGain[aK] * aPdsGlob[aK];  // Pds de la case prop a sqrt du NbGlob
+          /*
+                Le gain c'est + ou -  Som (Nb/NbGlob * sqrt(NbGblob)) , a revoir ...
+          */
       }
 
       if (mAppli->CurTestArc())
@@ -515,6 +556,10 @@ void  cGTrip_AttrSom::UpdateCost(tSomGT * aSomThis,tSomGT *aSomSel)
            int aD2 =  aDens2[aK];
            ElSetMin(mGain[aK], mDens[aK] * ( aNewGain * aD2 + TQuant*(TQuant-aD2)));
            mGainGlob +=  mGain[aK] * aPdsGlob[aK];
+/*
+           mGain[aK] = mDens[aK] * TQuant * aGain;
+           mGainGlob +=  mGain[aK] * aPdsGlob[aK];  // Pds de la case prop a sqrt du NbGlob
+*/
       }
 }
 
@@ -562,7 +607,7 @@ int cAppli_GenTriplet::ToIndex(const Pt2df &  aP0) const
 
 tSomGT * cAppli_GenTriplet::GetNextSom()
 {
-   int aNbMaxTriplet = mQuick ? TQuickNbMaxTriplet : TStdNbMaxTriplet;
+   int aNbMaxTriplet = mQuick ? mTQuickNbMaxTriplet : mTStdNbMaxTriplet;
    if (mVSomEnCourse.empty()) return 0;
    if (int(mVSomSelected.size()) > aNbMaxTriplet) return 0;
 
@@ -608,6 +653,10 @@ void cAppli_GenTriplet::GenTriplet(tArcGT & anArc)
     std::vector<Pt2df> aVP1,aVP2;
     ElTimer aChrono;
     mNM->LoadHomFloats(&(anArc.s1().attr().Im()),&(anArc.s2().attr().Im()),&aVP1,&aVP2);
+if (0&&MPD_MM())
+{
+    std::cout << "iiIiii " << aVP1.size() << "\n";
+}
     mTimeLoadCple += aChrono.uval();
     mNbLoadCple ++;
 
@@ -667,6 +716,11 @@ void cAppli_GenTriplet::GenTriplet(tArcGT & anArc)
           AddSomTmp(aS3);
        }
     }
+if (0&&MPD_MM())
+{
+    std::cout << "jjjjjj " << aVP1.size() << "\n";
+    getchar();
+}
     mTimeMerge += aChroMerge.uval();
 
 
@@ -948,16 +1002,15 @@ cAppli_GenTriplet::cAppli_GenTriplet(int argc,char ** argv) :
     mCurS1      (0),
     mCurS2      (0),
     mSomTest3   (0),
-    mShow       (true),
+    // m Show       (true),
     mDebug      (false),
     mTimeMerge  (0.0),
     mTimeSelec  (0.0),
-    mQuick      (true), 
-    mPrefHom    (""),
-    mExtName    (""),
+    // mQuick      (true), 
+    // mPrefHom    (""),
+    // mExtName    (""),
     mRamAllowed (4e9),
-    mKS0        (0),
-    mNameModeNO     (TheStdModeNewOri)
+    mKS0        (0)
 {
    ElTimer aChronoLoad;
 
@@ -965,22 +1018,17 @@ cAppli_GenTriplet::cAppli_GenTriplet(int argc,char ** argv) :
    (
         argc,argv,
         LArgMain() <<  EAMC(mFullName,"Pattern", eSAM_IsPatFile),
-        LArgMain() << EAM(mNameOriCalib,"OriCalib",true,"Orientation for calibration", eSAM_IsExistDirOri)
+        LArgMain() 
                    << EAM(mShow,"Show",true,"Show intermediary message")
                    << EAM(mNameTest1,"Test1",true,"Name of first test image", eSAM_IsExistFile)
                    << EAM(mNameTest2,"Test2",true,"Name of second test image", eSAM_IsExistFile)
                    << EAM(mNameTest3,"Test3",true,"Name of second test image", eSAM_IsExistFile)
-                   << EAM(mQuick,"Quick",true,"Quick version", eSAM_IsBool)
                    << EAM(mDebug,"Debug",true,"Debug .... tuning purpose .... Def=false", eSAM_IsBool)
                    << EAM(mKS0,"KS0",true,"Tuning Def=0", eSAM_IsBool)
-                   << EAM(mPrefHom,"PrefHom",true,"Prefix Homologous points, def=\"\"")
-                   << EAM(mExtName,"ExtName",true,"User's added prefix, def=\"\"")
-                   << EAM(mNameModeNO,"ModeNO",true,"Mode (Def=Std)")
-
+                   << ArgCMA()
    );
    
-   mModeNO = ToTypeNO(mNameModeNO);
-   mSelAll = (mModeNO == eModeNO_TTK);
+   mSelAll = (ModeNO() == eModeNO_TTK);
 
 
    if (MMVisualMode) return;
@@ -1006,8 +1054,6 @@ cAppli_GenTriplet::cAppli_GenTriplet(int argc,char ** argv) :
         mMapS[aName] = &aS;
    }
 
-   // const cInterfChantierNameManipulateur::tSet *  aSetCple =  mEASF.mICNM->Get("NKS-Set-CplIm2OriRel@"+mNameOriCalib+"@dmp");
-   // std::string aKeyCple2I = "NKS-Assoc-CplIm2OriRel@"+mNameOriCalib+"@dmp";
 
    const cInterfChantierNameManipulateur::tSet *  aSetCple =  mEASF.mICNM->Get(mNM->KeySetCpleOri());
    std::string aKeyCple2I = mNM->KeyAssocCpleOri();

@@ -241,7 +241,7 @@ private :
 
 
     cAppli_SaisiePts & mAppli;
-
+    bool                    mUseMMPt;
     Video_Win               mW;
     Video_Win               mWT;
     eModeWinIm              mMode;
@@ -595,6 +595,9 @@ class cAppli_SaisiePts
     void                SortImages(std::vector<cImage *> &images);
     void OnModifLoadedImage();
     cMMByImNM *                       PIMsFilter();
+
+    bool ValidePt(const cPointGlob & aPG,const Pt3dr & aP3d,cBasicGeomCap3D * aCap) const;
+
 
 private :
 

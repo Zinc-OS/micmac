@@ -668,7 +668,7 @@ cXml_ParamBascRigide   EL2Xml(const cSolBasculeRig & aSBR)
 
 
 
-void cAppliApero::BasculePoints
+cSolBasculeRig cAppliApero::BasculePoints
      (
            const cBasculeOnPoints & aBOP,
            cSetName  &            aSelectorEstim,
@@ -676,6 +676,7 @@ void cAppliApero::BasculePoints
            cElRegex &            aSelectorApply
      )
 {
+   bool aForceSol = aBOP.ForceSol().IsInit();
 
    bool aBonC = aBOP.BascOnCentre().IsInit();
    bool CalcV = aBonC &&  aBOP.BascOnCentre().Val().EstimateSpeed().Val();
@@ -845,6 +846,11 @@ void cAppliApero::BasculePoints
 
    }
 
+   if (aForceSol)
+   {
+        cXml_ParamBascRigide anXPBR =  StdGetFromPCP(mDC+aBOP.ForceSol().Val(),Xml_ParamBascRigide);
+        aSBR = Xml2EL(anXPBR);
+   }
 
    cCompBascNonLin * aPtrBNL=0;
    const cAerialDeformNonLin * anADNL = aBOP.AerialDeformNonLin().PtrVal();
@@ -884,7 +890,7 @@ void cAppliApero::BasculePoints
                ElCamera::ChangeSys(aVC,*aPtrBNL,FTR,!aBonC);
                if (FTR)
                {
-                  aPC->SetCurRot(aCS->Orient().inv());
+                  aPC->PCSetCurRot(aCS->Orient().inv());
                }
                else
                {
@@ -895,7 +901,6 @@ void cAppliApero::BasculePoints
 /*
 */
             }
-            //   aPC->SetCurRot ( aSBR.TransformOriC2M(aPC->CurRot()));
 
             if (aPC->HasObsOnCentre() && ((!CalcV) || (aPC->HasObsOnVitesse())))
             {
@@ -992,6 +997,8 @@ void cAppliApero::BasculePoints
 
 
    delete aPtrBNL;
+
+   return aSBR;
 }
 
 
@@ -1012,10 +1019,13 @@ cElPlan3D cAppliApero::EstimPlan
 
    aPOL->GetPtsTerrain (aPEP, aSelectorEstim, aAGPt,anAttr);
 
+
    // const std::vector<Pt3dr>  &  aVPts = aAGPt.Pts();
    // const std::vector<double> &  aVPds = aAGPt.Pds();
    std::vector<Pt3dr>   aVPts = aAGPt.Pts();
    std::vector<double>  aVPds = aAGPt.Pds();
+
+   std::cout << "NbPts 4 plan " << aVPts.size() << "\n";
 
    if ((aVPts.size() == 0) && (aPEP.AcceptDefPlanIfNoPoint().Val()))
    {
@@ -1270,7 +1280,6 @@ void cAppliApero::BasculePlan
 //  {RP2E     * Rc}(Cam)  = Plan
 //
 // std::cout << euclid(aPC->CurRot().tr()) <<  " " <<  aPC->CurRot().tr()  << "\n";
-            // aPC->SetCurRot(aRP2E.inv()*(aPC->CurRot()));
 //            std::cout << "BASCULE PLAN DONE FOR " << aPC->Name() << "\n";
 // std::cout << euclid(aPC->CurRot().tr()) <<  " " << aPC->CurRot().tr() << "\n\n";
             aPC->SetBascRig(aSBR);
@@ -1309,14 +1318,21 @@ void cAppliApero::Bascule(const cBasculeOrientation & aBO,bool CalledAfter)
 // std::cout << "PAT= " << aBO.PatternNameEstim().Val() << "\n";
    cElRegex aSelectorApply(aBO.PatternNameApply().Val(),10);
 
+   cSolBasculeRig aSol = cSolBasculeRig::Id();
+
    if (aBO.BasculeOnPoints().IsInit())
    {
-     BasculePoints(aBO.BasculeOnPoints().Val(),*aSelectorEstim,aSelectorApply);
+     aSol = BasculePoints(aBO.BasculeOnPoints().Val(),*aSelectorEstim,aSelectorApply);
    }
    else if (aBO.BasculeLiaisonOnPlan().IsInit())
    {
       BasculePlan(aBO.BasculeLiaisonOnPlan().Val(),*aSelectorEstim,aSelectorApply);
    }
+
+   if (aBO.FileExportDir().IsInit())
+      MakeFileXML(EL2Xml(aSol),mDC+aBO.FileExportDir().Val());
+   if (aBO.FileExportInv().IsInit())
+      MakeFileXML(EL2Xml(aSol.Inv()),mDC+aBO.FileExportInv().Val());
 }
 
 #if (0)
@@ -1377,7 +1393,7 @@ void cAppliApero::FixeEchelle(const cFixeEchelle & aFE)
        if ( aPC->RotIsInit())
        {
             ElRotation3D  aR = aPC->CurRot();
-            aPC->SetCurRot(ElRotation3D(aR.tr()*aMult,aR.Mat(),true));
+            aPC->PCSetCurRot(ElRotation3D(aR.tr()*aMult,aR.Mat(),true));
        }
    }
 
@@ -1608,8 +1624,7 @@ void cAppliApero::FixeOrientPlane(const cFixeOrientPlane & aFOP)
        {
 // std::cout << aR.Mat() * (Pt3dr(0,0,1)) << "\n";
 // std::cout << aPC->CurRot().Mat() * (Pt3dr(0,0,1)) << "\n";
-            aPC->SetCurRot(aR*aPC->CurRot());
-// std::cout << aPC->CurRot().Mat() * (Pt3dr(0,0,1)) << "\n\n";
+            aPC->PCSetCurRot(aR*aPC->CurRot());
        }
    }
 }

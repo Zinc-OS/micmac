@@ -67,9 +67,41 @@ FAIT :
      o  Masque Binaire 
 */
 
-
 #ifndef _ELISE_MICMAC_ALL_H_
 #define _ELISE_MICMAC_ALL_H_
+
+// Pour la multi correl ponctuelle, le cout de stockage peut etre eleve,
+//   donc au depart on a stocke sur des INT1
+//   mais ensuite il est apparu que cela pouvait creer des probleme de dynamique
+//   on se garde la possibilite d'avoir des INT2
+// si l'algo finit par etre valide, on fera peut etre du INT1 avec une dynamique non lineaire
+
+#define USE_INT1_4_MCP false
+
+extern const double MCPMulCorel;
+
+#if (USE_INT1_4_MCP)
+typedef U_INT2 tCRVal;
+const tCRVal ValUndefCple = 0 ;  // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
+typedef INT1 tMCPVal;
+const int TheDynMCP = 127;
+const int ValUndefCPONT = -128 ;  // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
+#else
+typedef REAL4 tCRVal;
+typedef INT2 tMCPVal;
+const int TheDynMCP = 10000;
+const int ValUndefCPONT = -20000 ;  // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
+// #define TheDynMCP 10000 
+// #define ValUndefCPONT  -20000 // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
+const tCRVal ValUndefCple = -1 ;  // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
+#endif
+
+inline int AdaptCostPonct(int aVal)
+{
+   return ElMax(-TheDynMCP,ElMin(TheDynMCP,aVal));
+}
+
+
 
 #define BRK_MICMAC_MES(aMes) \
 {\
@@ -98,12 +130,8 @@ template <class T> class cMatrOfSMV;
 void MicMacRequiresBinaireAux();
 
 
-#define ValUndefCPONT -128  // Valeur pour coder une valeur inexistante en correl "a un pixel" multi image
-inline int AdaptCostPonct(int aVal)
-{
-   return ElMax(-127,ElMin(127,aVal));
-}
 
+class cGLI_CalibRadiom;
 
 
 
@@ -330,8 +358,8 @@ class cSurfaceOptimiseur
       double CostTransEnt(int aTrans,int aKPpx);
       bool                    MaskCalcDone();
       Im2D_Bits<1>            MaskCalc();
-      virtual void Local_SetCpleRadiom(Pt2di aPTer,int * aPX,U_INT2 aR1,U_INT2 aR2);  
-      virtual void Local_VecInt1(Pt2di aPTer,int * aPX,const  std::vector<INT1> &);
+      virtual void Local_SetCpleRadiom(Pt2di aPTer,int * aPX,tCRVal aR1,tCRVal aR2);  
+      virtual void Local_VecMCP(Pt2di aPTer,int * aPX,const  std::vector<tMCPVal> &);
 
     protected  :
       cSurfaceOptimiseur
@@ -795,7 +823,7 @@ class cGeomDiscR2
          void SetClip(const  Pt2di & aP0,const  Pt2di  & aP1);
 
          void SetClipInit();
-
+ 
              // Accesseurs
 
          const Pt2di & SzDz() const;
@@ -2585,6 +2613,11 @@ typedef tGpuF **             tDataGpu;
 class   cGPU_LoadedImGeom
 {
    public :
+       void InitCalibRadiom(cGLI_CalibRadiom * aCal);
+       double CorrRadiom(double aVal);
+       double CorrRadiom(double aVal, const Pt2dr &aP);
+
+
        ~cGPU_LoadedImGeom();
        cGPU_LoadedImGeom
        (
@@ -2725,6 +2758,7 @@ class   cGPU_LoadedImGeom
        cPriseDeVue * PDV();
 
        bool Correl(double & Correl,int anX,int anY,const cGPU_LoadedImGeom & aGeoJ,int aNbIm) const;
+       bool CorreCensus(double & Correl,int anX,int anY,const cGPU_LoadedImGeom & aGeoJ,int aNbIm) const;
 
        // inline double StatIm(int anX,int anY,tGpuF **) const;
 
@@ -2750,6 +2784,8 @@ class   cGPU_LoadedImGeom
        std::vector<Im2D_REAL4> VIm();
 
        Pt2di  SzV0() const;
+
+        void InitMCP_AttachePix(const cMCP_AttachePixel * aAP);
 
 
    private :
@@ -2843,6 +2879,7 @@ class   cGPU_LoadedImGeom
        int                mSeuilPC;
        bool               mUsePC;
        bool               mIsOK;
+       cGLI_CalibRadiom * mCalR;
 };
 
 
@@ -3012,10 +3049,10 @@ class cAppliMICMAC  : public   cParamMICMAC,
         void   CalcCorrelByRect(Box2di,int * aPx);
 
         void DoCorrelLeastQuare(const Box2di & aBoxOut,const Box2di & aBoxIn,const cCorrel2DLeastSquare &);
-	void DoGPU_Correl (const Box2di & aBoxInterne,const cMultiCorrelPonctuel *);  
+	void DoGPU_Correl (const Box2di & aBoxInterne,const cMultiCorrelPonctuel *,double aPdsPix);  
         void DoCensusCorrel(const Box2di & aBox,const cCensusCost &);
         void DoOneCorrelSym(int anX,int anY,int aNbScale);
-        void DoOneCorrelIm1Maitre(int anX,int anY,const cMultiCorrelPonctuel *,int aNbIm,bool VireExtr);
+        void DoOneCorrelIm1Maitre(int anX,int anY,const cMultiCorrelPonctuel *,int aNbIm,bool VireExtr,double aPdsPix);
         void DoOneCorrelMaxMinIm1Maitre(int anX,int anY,bool aModeMax,int aNbIm);
 
 		void DoGPU_Correl_Basik (const Box2di & aBoxInterne); 
@@ -3044,6 +3081,7 @@ class cAppliMICMAC  : public   cParamMICMAC,
         void DoCorrelMultiFen ( const Box2di & aBox, const cCorrel_MultiFen &);
 
         void DoCorrelRobusteNonCentree ( const Box2di & aBox, const cCorrel_NC_Robuste & aCNR);
+
 
 
 
@@ -3151,6 +3189,7 @@ class cAppliMICMAC  : public   cParamMICMAC,
 
          const cCorrelAdHoc * CAH() const;
          const cCorrelMultiScale*  CMS() const;
+         const cCensusCost *       CC() const;
 
          double AhDefCost () const {return mAhDefCost;} 
          double AhEpsilon () const {return mAhEpsilon;}
@@ -3672,6 +3711,7 @@ class cAppliMICMAC  : public   cParamMICMAC,
        cSurfaceOptimiseur *    mSurfOpt;
        const cCorrelAdHoc *      mCorrelAdHoc;
        const cCorrelMultiScale*  mCMS;
+       const cCensusCost *       mCC;
        bool                      mCMS_ModeEparse;
 
        bool                  mGIm1IsInPax;
@@ -3714,14 +3754,27 @@ class cAppliMICMAC  : public   cParamMICMAC,
          cMakeMaskImNadir         * mMakeMaskImNadir;
 
          int     mMaxPrecision;
+
+         std::map<std::string,cGLI_CalibRadiom *> mDicCalRad;
  
      public :
+
+         void ResetCalRad();
+         
        // Pour debug MM TieP
-         cMasqBin3D *      mGLOBMasq3D;
-         cElNuage3DMaille* mGLOBNuage;
+         cMasqBin3D *           mGLOBMasq3D;
+         cElNuage3DMaille*      mGLOBNuage;
+         const cMultiCorrelPonctuel * mMCP;
+
+         std::vector<float>     mStatCNC;
+         std::vector<float>     mStat1Pix;
+         std::vector<float>     mStatCrois;
+         bool                   mDoStatCorrel;
 
          bool mCorrecAlti4ExportIsInit;
          double mValmCorrecAlti4Export;
+
+          
 };
 
 std::string  StdNameFromCple
@@ -3820,6 +3873,10 @@ void CombleTrouPrgDyn (
          Im2D_Bits<1>  aMaskTer,
          Im2D_INT2     aImZ
      );
+
+// Fonction du ratio compris entre -1 et 1; 0 qd egaux
+double EcartNormalise(double aI1,double aI2);
+
 
 
 

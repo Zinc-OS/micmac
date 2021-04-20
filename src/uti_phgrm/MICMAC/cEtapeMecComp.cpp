@@ -37,7 +37,7 @@ English :
 
 Header-MicMac-eLiSe-25/06/2007*/
 #include "StdAfx.h"
-#include "../src/uti_phgrm/MICMAC/MICMAC.h"
+#include "MICMAC.h"
 extern void  t(Im2DGen I,int,int);
 
 
@@ -563,6 +563,8 @@ cEtapeMecComp::cEtapeMecComp
              mTheModPrgD = &(aTplModul.Val());
 
              mArgMaskAuto = mTheModPrgD->ArgMaskAuto().PtrVal();
+             if (mArgMaskAuto && (mArgMaskAuto->ValDefCorrel() <-1))
+                mArgMaskAuto = 0;
 
              if (mArgMaskAuto)
              {
@@ -589,7 +591,7 @@ cEtapeMecComp::cEtapeMecComp
              {
                 NewPrgDynInterdit = true;
              }
-             if (mTheModPrgD->ArgMaskAuto().IsInit())
+             if (mArgMaskAuto)
              {
                 NewPrgDynOblig = true;
              }

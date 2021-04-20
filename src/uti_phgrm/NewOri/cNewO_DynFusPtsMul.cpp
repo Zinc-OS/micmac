@@ -613,7 +613,7 @@ template  class cFixedSizeMergeTieP<2,Pt2dr,cCMT_NoVal>;
 template  class cVarSizeMergeTieP<Pt2df,cCMT_NoVal>;
 template  class cVarSizeMergeTieP<Pt2df,cCMT_U_INT1>;
 
-
+template void NOMerge_AddAllCams<2>(cStructMergeTieP<cFixedSizeMergeTieP<2, Pt2dr, cCMT_NoVal> >& aMap, std::vector<cNewO_OneIm*> aVI);
 
 template  class cStructMergeTieP<cFixedSizeMergeTieP<3,Pt2df,cCMT_NoVal> >;
 template  class cStructMergeTieP<cFixedSizeMergeTieP<2,Pt2df,cCMT_NoVal> >;
@@ -773,15 +773,6 @@ template <const int TheNb> void NOMerge_AddAllCams
     }
 }
 
-
-void New_ForceInstanceNOMerge_AddAllCams()
-{
-    std::vector<cNewO_OneIm*> aVI;
-    cStructMergeTieP< cFixedSizeMergeTieP<2,Pt2dr,cCMT_NoVal> > aMap(2,false);
-    NOMerge_AddAllCams(aMap,aVI);
-}
-
-
 void  NewOri_Info1Cple
 (
       const ElCamera & aCam1,
@@ -834,13 +825,16 @@ ElPackHomologue ToStdPack(const tMergeLPackH * aMPack,bool PondInvNorm,double aP
 
         double aPds = ((*itC)->NbArc() == 1) ? aPdsSingle : 1.0;
 
-        if (PondInvNorm)
+        if (aPds > 0)
         {
-             aPds /= NormPt2Ray(aP0) * NormPt2Ray(aP1);
-        }
+           if (PondInvNorm)
+           {
+                aPds /= NormPt2Ray(aP0) * NormPt2Ray(aP1);
+           }
 
-        ElCplePtsHomologues aCple(aP0,aP1,aPds);
-        aRes.Cple_Add(aCple);
+           ElCplePtsHomologues aCple(aP0,aP1,aPds);
+           aRes.Cple_Add(aCple);
+       }
     }
 
     return aRes;

@@ -51,6 +51,135 @@ mm3d MyRename "(IMG_010.*)" "F\$2_\$1" AddFoc=1 PatSub="(.*)"
 
 
 */
+
+
+class cApplyMMRename 
+{
+    public :
+       cApplyMMRename (int argc,char ** argv);
+
+       std::string               mKeyCalc;
+       std::vector<std::string>  mVSetH;
+       std::vector<std::string>  mVSetO;
+       cInterfChantierNameManipulateur  * mICNM;
+   private :
+
+       void DoOneDirHom(const std::string & aSH,const std::string & anExt);
+       void DoOneDirOri(const std::string & aOri);
+};
+
+
+void cApplyMMRename::DoOneDirOri(const std::string & aOri)
+{
+    std::string aKeySet    = std::string("NKS-Set-Orient@-") + aOri;
+    std::string aKeyOri2Im = std::string("NKS-Assoc-Im2Orient@-") + aOri;
+
+    const cInterfChantierNameManipulateur::tSet *   aSetF = mICNM->Get(aKeySet);
+
+
+    for (int aK=0 ; aK<int(aSetF->size()) ; aK++)
+    {
+        //std::cout << "Ori=" << (*aSetF)[aK] << "\n";
+	std::string aOldOri = (*aSetF)[aK];
+	std::string aI1  = mICNM->Assoc1To1(aKeyOri2Im,aOldOri,false);
+
+	std::string aI2 = mICNM->Assoc1To1(mKeyCalc,aI1,true);
+
+	std::string aNewOri = mICNM->Assoc1To1(aKeyOri2Im,aI2,true);
+
+	ELISE_fp::CpFile(aOldOri,aNewOri);
+
+	std::cout << " F=" << aOldOri << " -> " << aNewOri << "\n";
+	
+    }
+
+
+}
+
+void cApplyMMRename::DoOneDirHom(const std::string & aSH,const std::string & anExt)
+{
+    std::string aKeySet  = std::string("NKS-Set-Homol@") + aSH + "@" + anExt;
+    std::string aKeyCple = std::string("NKS-Assoc-CplIm2Hom@") + aSH + "@" + anExt;
+
+    std::string aExTmp = "Tmp-MMRename";
+
+    std::string aKeyNewCple = std::string("NKS-Assoc-CplIm2Hom@") + aExTmp + "@" + anExt;
+
+
+    const cInterfChantierNameManipulateur::tSet *   aSetF = mICNM->Get(aKeySet);
+
+    
+    for (int aK=0 ; aK<int(aSetF->size()) ; aK++)
+    {
+         const std::string & aNameHom = (*aSetF)[aK];
+         //std::cout << "H=" << aNameHom << "\n";
+         std::pair<std::string,std::string> aPair = mICNM->Assoc2To1(aKeyCple,aNameHom,false);
+         const std::string &  aNI1 = aPair.first;
+         const std::string &  aNI2 = aPair.second;
+
+          std::string aNewI1 = mICNM->Assoc1To1(mKeyCalc,aNI1,true);
+          std::string aNewI2 = mICNM->Assoc1To1(mKeyCalc,aNI2,true);
+
+         std::string aNewNameHom = mICNM->Assoc1To2(aKeyNewCple,aNewI1,aNewI2,true);
+
+         ELISE_fp::CpFile(aNameHom,aNewNameHom);
+
+         std::cout << " F=" << aNameHom << " " << aNI1 <<" " << aNI2    << "\n";
+    }
+}
+
+cApplyMMRename::cApplyMMRename(int argc,char ** argv)
+{
+    
+    ElInitArgMain
+    (
+        argc,argv,
+        LArgMain() << EAMC(mKeyCalc,"Key of computation")  ,
+        LArgMain() << EAM(mVSetH,"SH",true,"Set of Homologous point")
+                   << EAM(mVSetO,"Ori",true,"Set of Orientations")
+    );
+ 
+    mICNM  = cInterfChantierNameManipulateur::BasicAlloc("./");
+
+
+    for (int aKS=0 ; aKS<int(mVSetH.size()) ; aKS++)
+    {
+        DoOneDirHom(mVSetH[aKS],"dat");
+        DoOneDirHom(mVSetH[aKS],"txt");
+    }
+
+    for (int aKS=0 ; aKS<int(mVSetO.size()) ; aKS++)
+    {
+	DoOneDirOri(mVSetO[aKS]);
+    }
+
+/*
+    const cInterfChantierNameManipulateur::tSet *   aSetF = mICNM->Get(mKeySet);
+    std::cout << "  Test Adr " << aSetF << " " <<  mICNM->Get(mKeySet) << "\n";
+
+    for (int aK=0 ; aK<int(aSetF->size()) ; aK++)
+         std::cout << " F=" << (*aSetF)[aK] << "\n";
+*/
+
+/*
+    std::string aCalc = mICNM->Assoc1To1(mKey,mTest,true);
+    std::string anInv = mICNM->Assoc1To1(mKey,aCalc,false);
+    std::cout << "Input=" << mTest << " Output=" << aCalc  << " Rev=" << anInv << "\n";
+*/
+}
+
+
+int CPP_MMRename(int argc,char ** argv)
+{
+    cApplyMMRename anAppli(argc,argv);
+
+    return EXIT_SUCCESS;
+}
+
+
+
+
+
 /*********************************************/
 /*                                           */
 /*                ::                         */
@@ -257,12 +386,14 @@ cAppliMyRename::cAppliMyRename(int argc,char ** argv)  :
     for (int aK=0 ; aK <int(aVM.size()) ; aK++)
     {
         ;
-        if (mPrfNum!=0)
+        if (EAMIsInit(&mPrfNum))
         {
             int aPrf=aK+mPrfNum;
-            stringstream ss;
-            ss << aPrf;
-            aVM[aK].mNameOut = ss.str() + aVM[aK].mNameOut;
+            // stringstream ss;
+            // ss << aPrf;
+            char Buf[100];
+            sprintf(Buf,"%06d",aPrf);
+            aVM[aK].mNameOut = std::string(Buf) + aVM[aK].mNameOut;
         }
         std::string aSys = string(SYS_MV) + ' ' + ToStrBlkCorr(mDir+aVM[aK].mNameIn) + " " + ToStrBlkCorr(mDir+aVM[aK].mNameOut);
 

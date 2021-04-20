@@ -60,7 +60,8 @@
         <eTIGB_MMDGlobe>    </eTIGB_MMDGlobe>
         <eTIGB_MMIkonos>    </eTIGB_MMIkonos>
         <eTIGB_MMASTER>     </eTIGB_MMASTER>
-        <eTIGB_MMSpice>     </eTIGB_MMSpice>
+        <eTIGB_MMScanLineSensor>     </eTIGB_MMScanLineSensor>
+        <eTIGB_MMEpip>      </eTIGB_MMEpip>
         <eTIGB_NbVals>      </eTIGB_NbVals>
     </enum>
 
@@ -68,8 +69,23 @@
         <eModeNO_Std>     </eModeNO_Std>
         <eModeNO_TTK>     </eModeNO_TTK> <!-- Tomasi Kanade -->
         <eModeNO_StdNoTTK> </eModeNO_StdNoTTK> <!-- Supprime Tom Kan , car plante encore parfois -->
+        <eModeNO_OnlyHomogr> </eModeNO_OnlyHomogr> <!-- pour calculer les orientation d'un scene plane par homographie seulement -->
         <eModeNO_NbVals>  </eModeNO_NbVals> <!-- LastValue -->
     </enum>
+
+    <enum Name="eTypeMap2D">
+        <eTM2_Homot>     </eTM2_Homot>
+        <eTM2_Simil>     </eTM2_Simil>
+        <eTM2_Affine>    </eTM2_Affine>
+        <eTM2_Homogr>    </eTM2_Homogr>
+        <eTM2_Cam>       </eTM2_Cam>
+        <eTM2_Compos>    </eTM2_Compos>
+        <eTM2_Polyn>    </eTM2_Polyn>
+        <eTM2_HomotPure> </eTM2_HomotPure>  <!-- Vectorielle Sans translation , mais avec un point invariant fixe-->
+        <eTM2_Trans>     </eTM2_Trans>      <!-- Vectorielle Sans translation -->
+        <eTM2_NbVals>    </eTM2_NbVals>
+    </enum>
+
 
 
     <LutConvertion  Nb="1"  Class="true" ToReference="true">
@@ -1245,6 +1261,7 @@
            <PenteRefutInitInPixel Nb="?" Type="double" Def="0.5"> </PenteRefutInitInPixel>
            <ComputeIncid Nb="?" Type="bool" Def="true"> </ComputeIncid>
            <DilateBord Nb="?" Type="int" Def="3"> </DilateBord>
+           <PdsZAbsolute Nb="?" Type="double" Def="0.333"> </PdsZAbsolute> <!-- Pour eviter les points sparse a l'infini -->
       </ImageVariations>
       <PFM_Selection Nb="1">
             <ElimDirectInterior Nb="?" Type="double" Def="10.0"> </ElimDirectInterior>
@@ -1369,10 +1386,8 @@
      <Ori Nb="1" RefType="TypeCodageMatr"> </Ori>
      <ResiduRP Nb="1" Type="double" > </ResiduRP>
 </Xml_O2IRotPure>
-<Xml_O2IHom Nb="1" Class="true" ToReference="true">
-     <Hom Nb="1" RefType="XmlHomogr"> </Hom>
-     <ResiduHom Nb="1" Type="double" > </ResiduHom>
-</Xml_O2IHom>
+
+
 
 
 
@@ -1387,6 +1402,19 @@
 </Xml_O2ITiming>
 
 
+<Xml_Rotation Nb="1" Class="true" ToReference="true">
+     <Ori Nb="1" RefType="TypeCodageMatr"> </Ori>
+     <Centre Nb="1" Type="Pt3dr" > </Centre>
+</Xml_Rotation>
+
+<Xml_Elips2D  Nb="1" Class="true" ToReference="true">
+     <CDG Nb="1" Type="Pt2dr" > </CDG>
+     <Sxx Nb="1" Type="double"> </Sxx>
+     <Syy Nb="1" Type="double"> </Syy>
+     <Sxy Nb="1" Type="double"> </Sxy>
+     <Pds Nb="1" Type="double"> </Pds>
+     <Norm Nb="1" Type="bool">  </Norm>
+</Xml_Elips2D>
 
 <Xml_Elips3D  Nb="1" Class="true" ToReference="true">
      <CDG Nb="1" Type="Pt3dr" > </CDG>
@@ -1400,6 +1428,22 @@
      <Norm Nb="1" Type="bool">  </Norm>
 </Xml_Elips3D>
 
+<Xml_MepHom Nb="1" Class="true" ToReference="true">
+     <Ori Nb="*" RefType="Xml_Rotation">          </Ori>
+</Xml_MepHom>
+
+<Xml_O2IHom Nb="1" Class="true" ToReference="true">
+     <Hom Nb="1" RefType="XmlHomogr"> </Hom>
+     <ResiduHom Nb="1" Type="double" > </ResiduHom>
+     <ForMepHom Nb="?" RefType="Xml_MepHom">  </ForMepHom>
+</Xml_O2IHom>
+
+
+<Xml_OriCple Nb="1" Class="true" ToReference="true">
+    <Ori1 Nb="1"  RefType="Xml_Rotation"> </Ori1>
+    <Ori2 Nb="1"  RefType="Xml_Rotation"> </Ori2>
+</Xml_OriCple>
+
 <Xml_O2IComputed Nb="1" Class="true" ToReference="true">
     <Timing Nb="1"  RefType="Xml_O2ITiming">     </Timing>
     <OrientAff Nb="1"  RefType="Xml_O2IRotation">      </OrientAff>
@@ -1408,6 +1452,8 @@
     <BSurH Nb="1" Type="double">   </BSurH>
     <RecHom Nb="1" Type="double">   </RecHom>  <!-- Recouvrement en faisant l'hypothese homographique -->
     <Elips Nb="1" RefType="Xml_Elips3D"> </Elips>
+    <Elips2  Nb="?" RefType="Xml_Elips2D">  </Elips2>
+    <OriCpleGps Nb="?"  RefType="Xml_OriCple"> </OriCpleGps>
 </Xml_O2IComputed>
 
 
@@ -1427,10 +1473,6 @@
 </Xml_Ori2Im>
 
 
-<Xml_Rotation Nb="1" Class="true" ToReference="true">
-     <Ori Nb="1" RefType="TypeCodageMatr"> </Ori>
-     <Centre Nb="1" Type="Pt3dr" > </Centre>
-</Xml_Rotation>
 
 
 <Xml_Ori3ImInit  Nb="1" Class="true" ToReference="true">
@@ -1455,6 +1497,30 @@
 <Xml_TopoTriplet Nb="1" Class="true" ToReference="true">
        <Triplets  Nb="*" RefType="Xml_OneTriplet"> </Triplets>
 </Xml_TopoTriplet>
+
+
+<!-- Export camera directions -->
+<Xml_SingleDir Nb="1" Class="true" ToReference="true">
+    <PIm Nb="1" Type="Pt2dr"> </PIm>
+    <P1 Nb="1" Type="Pt3dr"> </P1>
+    <P2 Nb="1" Type="Pt3dr"> </P2>
+</Xml_SingleDir>
+
+
+<Xml_ImDir Nb="1" Class="true" ToReference="true">
+    <Name Nb="1" Type="std::string"> </Name>
+    <P1OC Nb="1" Type="Pt3dr"> </P1OC>
+    <P2OC Nb="1" Type="Pt3dr"> </P2OC>
+    <ListDir Nb="*" RefType="Xml_SingleDir"> </ListDir>
+</Xml_ImDir>
+
+
+<Xml_ImSetDir Nb="1" Class="true" ToReference="true">
+    <Ims Nb="*" RefType="Xml_ImDir"> </Ims>
+</Xml_ImSetDir>
+
+
+
 
 <!-- Export RPCs -->
 <SAMP_NUM_COEFF Nb="1" Class="true" ToReference="true">
@@ -1592,6 +1658,7 @@
      <IndCol Nb="1" Type="double"> </IndCol>
      <P1 Nb="1"  Type="Pt3dr"> </P1>
      <P2 Nb="1"   Type="Pt3dr"> </P2>
+     <P3 Nb="*"   Type="Pt3dr"> </P3>
 </Xml_SLSRay>
 
 <Xml_OneLineSLS  Nb="1" Class="true" ToReference="true">
@@ -1837,6 +1904,138 @@
     <NameSec Nb="*" Type="std::string"  Container="std::vector"> </NameSec>
     <Tri  RefType="Xml_Triangle3DForTieP" Nb="*"  Container="std::vector"> </Tri>
 </Xml_TriAngulationImMaster>
+	
+		
+		
+    <!-- Ajoute le Pt interet predefini dans triangle, utilise pour saisie GCP -->
+<Xml_Triangle3DForTieP_WithPts   Nb="1" Class="true" ToReference="true">
+     <P1 Nb="1" Type="Pt3dr">  </P1>
+     <P2 Nb="1" Type="Pt3dr">  </P2>
+     <P3 Nb="1" Type="Pt3dr">  </P3>
+     <NumImSec Nb="*" Type="int"   Container="std::vector"> </NumImSec>
+     <NamePts Nb="*" Type="std::string"  Container="std::vector"> </NamePts>
+     <Pts Nb="*" Type="Pt2dr"   Container="std::vector"> </Pts>
+</Xml_Triangle3DForTieP_WithPts>
+
+
+<Xml_TriAngulationImMaster_WithPts Nb="1" Class="true" ToReference="true">
+    <NameMaster Nb="1" Type="std::string"> </NameMaster>
+    <NameSec Nb="*" Type="std::string"  Container="std::vector"> </NameSec>
+    <NamePts Nb="*" Type="std::string"  Container="std::vector"> </NamePts>
+    <Tri  RefType="Xml_Triangle3DForTieP" Nb="*"  Container="std::vector"> </Tri>
+</Xml_TriAngulationImMaster_WithPts>
+
+<!--  ******************** END TieP MESH ******************************* -->
+
+<Xml_MapCam Nb="1" Class="true" ToReference="true">
+    <PartieCam Nb="1" RefType="CalibrationInternConique" RefFile="ParamChantierPhotogram.xml"> </PartieCam>
+    <Directe Nb="1" Type="bool"> </Directe>
+</Xml_MapCam>
+
+<Xml_Homot Nb="1" Class="true" ToReference="true">
+    <Scale Nb="1" Type="double"> </Scale>
+    <Tr Nb="1" Type="Pt2dr"> </Tr>
+</Xml_Homot>
+
+<Xml_HomotPure Nb="1" Class="true" ToReference="true">
+    <Scale Nb="1" Type="double">  </Scale>
+    <PtInvar Nb="1" Type="Pt2dr"> </PtInvar>
+</Xml_HomotPure>
+
+<Xml_Trans Nb="1" Class="true" ToReference="true">
+    <Tr Nb="1" Type="Pt2dr"> </Tr>
+</Xml_Trans>
+
+
+
+
+<Xml_FulPollXY Nb="1" Class="true" ToReference="true">
+     <Degre  Nb="1" Type="int"> </Degre>
+     <Ampl   Nb="1" Type="double"> </Ampl>
+     <Coeffs Nb="*" Type="double" Container="std::vector"> </Coeffs>
+</Xml_FulPollXY>
+
+<Xml_Map2dPol  Nb="1" Class="true" ToReference="true">
+      <Box  Nb="1" Type="Box2dr">           </Box>
+      <DegAddInv Nb="?" Type="int"> </DegAddInv>
+      <MapX Nb="1" RefType="Xml_FulPollXY"> </MapX>
+      <MapY Nb="1" RefType="Xml_FulPollXY"> </MapY>
+</Xml_Map2dPol>
+
+<Xml_EvolMap2dPol  Nb="1" Class="true" ToReference="true">
+    <DegT  Nb="1" Type="int">      </DegT>
+    <IntervT Nb="1" Type="Pt2dr">  </IntervT>
+    <DegXY  Nb="1" Type="int">     </DegXY>
+    <BoxXY  Nb="1" Type="Box2dr">  </BoxXY>
+    <PolOfT Nb="*"  Container="std::vector" RefType="Xml_Map2dPol"> </PolOfT>
+</Xml_EvolMap2dPol>
+
+<Xml_Map2DElem Nb="1" Class="true" ToReference="true" UnionType="true">
+      <Homog RefType="XmlHomogr"  Nb="?"> </Homog>
+      <Homot RefType="Xml_Homot"  Nb="?"> </Homot>
+      <Sim RefType="SimilitudePlane"  Nb="?"> </Sim>
+      <Aff RefType="AffinitePlane"  Nb="?"> </Aff>
+      <Cam  RefType="Xml_MapCam"  Nb="?"> </Cam>
+      <Pol  RefType="Xml_Map2dPol"  Nb="?"> </Pol>
+      <HomotPure RefType="Xml_HomotPure"  Nb="?"> </HomotPure>
+      <Trans RefType="Xml_Trans"  Nb="?"> </Trans>
+</Xml_Map2DElem>
+
+<Xml_Map2D Nb="1" Class="true" ToReference="true" >
+     <Maps Nb="*" RefType="Xml_Map2DElem"> </Maps>
+</Xml_Map2D>
+
+<!-- ------------------------------------------------------------------------------- -->	
+<!-- Classes to represent measures used for projection of unknown 3D lines in images -->
+<!-- ------------------------------------------------------------------------------- -->	
+<!-- Nb, Class and ToRef must be present on "top" class -->
+<Xml_OneMeasure3DLineInIm  Nb="1" Class="true" ToReference="true">
+    <!-- std::string and Pt2dr are atomic types eligible to generate code -->
+    <NameLine3D Nb="1" Type="std::string"> </NameLine3D>
+    <P1 Nb="1" Type="Pt2dr"> </P1>
+    <P2 Nb="1" Type="Pt2dr"> </P2>
+</Xml_OneMeasure3DLineInIm>
+
+<Xml_SetMeasure3DLineInOneIm  Nb="1" Class="true" ToReference="true">
+    <NameIm Nb="1" Type="std::string"> </NameIm>
+    <!-- We use RefType because it's not an atomic but one xml previously  created -->
+    <Measures Nb="*" RefType="Xml_OneMeasure3DLineInIm"> </Measures>
+</Xml_SetMeasure3DLineInOneIm>
+
+<Xml_SetMeasureGlob3DLine Nb="1" Class="true" ToReference="true">
+    <AllMeasures Nb="*" RefType="Xml_SetMeasure3DLineInOneIm"> </AllMeasures>
+</Xml_SetMeasureGlob3DLine>
+<!-- ------------------------------------------------------------------------------- -->
+	
+<!-- ------------------------------------------------------------------------------- -->	
+<!-- Classes to represent 3D lines in space -->
+<!-- ------------------------------------------------------------------------------- -->	
+<Xml_One3DLine Nb="1" Class="true" ToReference="true">
+	<NameLine3D Nb="1" Type="std::string"> </NameLine3D>
+	<Pt  Nb="1" Type="Pt3dr"> </Pt>    <!-- "Origin" point -->
+	<Vec Nb="1" Type="Pt3dr"> </Vec>   <!-- Direction vector -->
+</Xml_One3DLine>
+	
+<Xml_Set3DLine Nb="1" Class="true" ToReference="true">
+	<AllLines Nb="*" RefType="Xml_One3DLine"> </AllLines>   <!-- List of 3D lines -->
+</Xml_Set3DLine>
+<!-- ------------------------------------------------------------------------------- -->
+
+
+<!--  ******************** BEGIN HistoricalTiep ******************************* -->
+<SetOfPatches Nb="1" Class="true" ToReference="true">
+   <Mes1Im Nb="*" Class="true">
+      <NameIm Nb="1" Type="std::string"> </NameIm>
+      <PrecPointeByIm Nb="?" Type="double"> </PrecPointeByIm>
+      <OnePatch1I Nb="*">
+         <PrecH Nb="?" Type="double"> </PrecH>
+         <NamePatch Nb="1" Type="std::string"> </NamePatch>
+         <PatchH   Nb="1" RefType="XmlHomogr"> </PatchH>
+      </OnePatch1I>
+   </Mes1Im>
+</SetOfPatches>
+
+<!--  ******************** END   HistoricalTiep ******************************* -->
 
 
 <Verbatim File=".h.cpp">

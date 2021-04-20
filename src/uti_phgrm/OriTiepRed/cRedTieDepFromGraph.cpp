@@ -472,18 +472,18 @@ double  cAppliGrRedTieP::SzPixDec() const
 
 
         // ------------------ Box creation ------------
-// mm3d OriRedTieP IMGP70.*JPG OriCalib=Ori-AllRel/ KBox=102
 
 std::string cAppliGrRedTieP::ComOfKBox(int aKBox)
 {
 
-   return MM3dBinFile("OriRedTieP") + " " + mPatImage 
+   return MM3dBinFile("OriRedTieP") + " " + '"' + mPatImage + '"'   // Giang : add "" around Pattern image to avoid error of expression type "epoque1_[a|b|c]|epoque1_d.*.tif"
              + " OriCalib=" + mCalib 
              + " KBox=" + ToString(aKBox)
              + " DistPMul=" + ToString(mDistPMul) 
              + " MVG=" + ToString(mMulVonGruber)
              + " DCA=" + ToString(mDoCompleteArc)
              + " UseP=" + ToString(mUsePrec)
+             + " SH=" + mSH
           ;
 }
 
@@ -507,7 +507,11 @@ void cAppliGrRedTieP::CreateBoxOfSom(tSomGRTP *aSom)
     double aRab = aSzD / 50.0;
     Pt2dr aPRab(aRab,aRab);
 
+
+
     cRealDecoupageInterv2D aRDec(aBox,Pt2dr(aSzD,aSzD),Box2dr(-aPRab,aPRab));
+
+
     for (int aKI=0 ; aKI< aRDec.NbInterv() ; aKI++)
     {
          cXml_ParamBoxReducTieP aXPB;
@@ -767,6 +771,7 @@ cVirtInterf_NewO_NameManager * cAppliGrRedTieP::NoNM()
 cAppliGrRedTieP::cAppliGrRedTieP(int argc,char ** argv) :
     mIntOrLevel      (eLevO_ByCple),
     mQuick           (true),
+    mSH              (""),
     mNbP             (-1),
     mFlagSel         (mGr.alloc_flag_som()),
     mFlagCur         (mGr.alloc_flag_som()),
@@ -800,12 +805,13 @@ cAppliGrRedTieP::cAppliGrRedTieP(int argc,char ** argv) :
                      << EAM(mSzPixDec,"SzPixDec",true,"Sz of decoupe in pixel")
                      << EAM(mTestExeOri,"TEO",true,"Test Execution OriRedTieP ()")
                      << EAM(mOut,"Out",true,"Folder dest => Def=-Ratafia")
-                     << EAM(mDistPMul,"DistPMul",true,"Average dist")
+                     << EAM(mDistPMul,"DistPMul",true,"Average distance in pixels between 2 Tie points, def=200")
                      << EAM(mMulVonGruber,"MVG",true,"Multiplier VonGruber, Def=" + ToString(mMulVonGruber))
                      << EAM(mInParal,"Paral",true,"Do it in parallel" )
                      << EAM(mDoCompleteArc,"DCA",true,"Do Complete Arc (Def=false)")
                      << EAM(mUsePrec,"UseP",true,"Use prec to avoid redundancy (Def=true), tuning only")
                      << EAM(mProbaSel,"ProbaSel",true,"tuning only, generate a random selection at the end")
+                     << EAM(mSH,"SH",true,"Homol Prefix , Def=\"\"")
 
    );
 
@@ -826,7 +832,8 @@ cAppliGrRedTieP::cAppliGrRedTieP(int argc,char ** argv) :
 
 
     cElemAppliSetFile::Init(mPatImage);
-    mNoNM = cVirtInterf_NewO_NameManager::StdAlloc(mDir,mCalib,mQuick);
+    //mNoNM = cVirtInterf_NewO_NameManager::StdAlloc(mDir,mCalib,mQuick);
+    mNoNM = cVirtInterf_NewO_NameManager::StdAlloc(mSH,mDir,mCalib,mQuick);
 
     if (!EAMIsInit(&mNbP))
     {
@@ -863,27 +870,33 @@ cAppliGrRedTieP::cAppliGrRedTieP(int argc,char ** argv) :
              cXml_Ori2Im anOri = mNoNM->GetOri2Im(itCp->N1(),itCp->N2());
              cAttArcSymGrRedTP * aAASym = new cAttArcSymGrRedTP(anOri);
              mGr.add_arc(*aS1,*aS2,new cAttArcASymGrRedTP(aAASym,true),new cAttArcASymGrRedTP(aAASym,false));
+
         }
     }
      
-
+// ttttttt
    // Calcul du nombre de connexion max
 
     for (tIterSomGRTP itS=mGr.begin(mSubAll);itS.go_on();itS++)
     {
         tSomGRTP & aS1 = (*itS);
-        std::vector<Pt2df> aVecRes;
-
-        for (tIterArcGRTP  itA=aS1.begin(mSubAll) ; itA.go_on(); itA++)
+        double aResiduOr = 1.0; 
+        if (mUseOr)
         {
-             const cXml_Ori2Im & anOri = (*itA).attr()->Ori();
-             ElSetMax(aS1.attr()->NbPtsMax(),anOri.NbPts());
-             aVecRes.push_back(Pt2df(anOri.Geom().Val().OrientAff().ResiduOr(),anOri.NbPts()));
+            std::vector<Pt2df> aVecRes;
+
+            for (tIterArcGRTP  itA=aS1.begin(mSubAll) ; itA.go_on(); itA++)
+            {
+                 const cXml_Ori2Im & anOri = (*itA).attr()->Ori();
+                 ElSetMax(aS1.attr()->NbPtsMax(),anOri.NbPts());
+                 aVecRes.push_back(Pt2df(anOri.Geom().Val().OrientAff().ResiduOr(),anOri.NbPts()));
+            }
+std::cout << "MMMP Name= " <<   aS1.attr()->Name()  << "\n";
+            aResiduOr = MedianPond(aVecRes);
         }
-        double aMed = MedianPond(aVecRes);
         const std::string & aName = aS1.attr()->Name();
         cXml_RatafiaSom aXRS;
-        aXRS.ResiduOr() = aMed;
+        aXRS.ResiduOr() = aResiduOr;
         MakeFileXML(aXRS,mNoNM->NameRatafiaSom(aName,true));
         MakeFileXML(aXRS,mNoNM->NameRatafiaSom(aName,false));
     }
@@ -921,6 +934,7 @@ cAppliGrRedTieP::cAppliGrRedTieP(int argc,char ** argv) :
 
 
     // Creation des box 
+
 
     CreateBox();
     

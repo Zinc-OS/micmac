@@ -1,6 +1,7 @@
-#include "general/visual_buttons.h"
+//TODO: ELISE HEADER
+#if ELISE_QT
 
-#if (ELISE_QT_VERSION >= 4)
+#include "general/visual_buttons.h"
 
 cSelectionButton::cSelectionButton(QString text, int id, bool normalize, QWidget *parent) :
      QPushButton(parent),
@@ -39,7 +40,7 @@ void cSpinBox::stepBy(int steps)
     setValue(_m_values.at(_m_index));
 }
 
-#endif // ELISE_QT_VERSION >= 4
+#endif // ELISE_QT
 
 
 

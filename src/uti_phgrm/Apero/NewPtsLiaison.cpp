@@ -46,10 +46,11 @@ class cStatResPM
      public :
         cStatResPM();
         void Init();
-        void AddStat(double anEr,double aPds);
+        void AddStat(double anEr,double aPds,int aMult);
 
         double mNb;
         double mNbNN;
+        double mNbMult;
         double mSomPds;
         double mSomPdsEr;
         double mSomPdsEr2;
@@ -120,13 +121,14 @@ cStatResPM::cStatResPM()
 void cStatResPM::Init()
 {
    mNb=0;
+   mNbMult=0;
    mNbNN=0;
    mSomPds=0;
    mSomPdsEr=0;
    mSomPdsEr2=0;
 }
 
-void  cStatResPM::AddStat(double anEr,double aPds)
+void  cStatResPM::AddStat(double anEr,double aPds,int aMult)
 {
    mNb++;
    if (aPds)
@@ -135,6 +137,7 @@ void  cStatResPM::AddStat(double anEr,double aPds)
        mSomPds += aPds;
        mSomPdsEr += aPds * anEr;
        mSomPdsEr2 += aPds * ElSquare(anEr);
+       if (aMult>2) mNbMult++;
    }
 }
 
@@ -229,7 +232,9 @@ void cAppliApero::InitNewBDL(const cBDD_NewPtMul & aBDN)
          std::cout << "For Id = " << aBDN.Id() << "\n";
          ELISE_ASSERT(false,"cAppliApero::InitNewBDL multiple use of id in BDD_NewPtMul");
      }
-     const std::vector<std::string> *  aSTP= cSetTiePMul::StdSetName(mICNM,aBDN.SH(),false);
+     //const std::vector<std::string> *  aSTP= cSetTiePMul::StdSetName(mICNM,aBDN.SH(),false);
+     const std::vector<std::string> *  aSTP= cSetTiePMul::StdSetName_BinTxt(mICNM,aBDN.SH());
+
      if (aSTP->size()==0) return;
 
      // aVNameFilter permet de filtrer les points homologues sur les poses 
@@ -284,6 +289,8 @@ cCompile_BDD_NewPtMul * cAppliApero::CDNP_FromName(const std::string & aName)
      //-----------------------------------------------------------------
      //               COMPENSATION
      //-----------------------------------------------------------------
+
+bool DEBUG_LSQ=false;
 
     // Compensation par configuration
 
@@ -341,6 +348,8 @@ void  cAppliApero::CDNP_Compense
    double aLimBsHRefut = Param().LimBsHRefut().Val();
    cArg_UPL anArgUPL = ArgUPL();
 
+   int aNAWNF = Param().NumAttrPdsNewF().Val();
+
    for (int aKp=0 ; aKp<aNbPts ; aKp++)
    {
        cNupletPtsHomologues aNUpl(0);
@@ -351,19 +360,30 @@ void  cAppliApero::CDNP_Compense
        }
 
       double aPdsIm = 1.0;
+      if (aNAWNF>=0)
+      {
+          aPdsIm = aConf->Attr(aKp,aNAWNF);
+      }
+
       double aResidu = 0;
       int aNbEtape = 2;
+
+      mDebugNumPts++;
+      bool ToEliminate = DebugEliminateNumTieP(mDebugNumPts);
+      DEBUG_LSQ= ToEliminate;
       for (int aKEtape=0 ; aKEtape<aNbEtape ; aKEtape++)
       {
-          bool WithEq = (aKEtape!=0);
-          std::vector<double>   aVpds;
-          for (int aKIm=0 ; aKIm <aNbIm ; aKIm++)
+          if (true)
           {
-              double aPds = aVCam[aKIm]->RotIsInit()  ? aPdsIm : 0.0;
-              aVpds.push_back(aPds);
-          }
+             bool WithEq = (aKEtape!=0);
+             std::vector<double>   aVpds;
+             for (int aKIm=0 ; aKIm <aNbIm ; aKIm++)
+             {
+                 double aPds = aVCam[aKIm]->RotIsInit()  ? aPdsIm : 0.0;
+                 aVpds.push_back(aPds);
+             }
 
-          const cResiduP3Inc & aRes    =  aMP3->UsePointLiaison
+             const cResiduP3Inc & aRes    =  aMP3->UsePointLiaison
                                           (
                                                 anArgUPL,
                                                 aLimBsHP,
@@ -374,43 +394,62 @@ void  cAppliApero::CDNP_Compense
                                                 WithEq,
                                                 0
                                           );       
-           if (aRes.mOKRP3I)
-           {
-                ELISE_ASSERT(int(aRes.mEcIm.size()) == aNbIm,"Incoh to check in cAppliApero::CDNP_Compense");
-                for (int aKIm=0 ; aKIm<int(aRes.mEcIm.size()) ; aKIm++)
-                {
-                   if (aVpds[aKIm] >0)
+              if (aRes.mOKRP3I)
+              {
+                   ELISE_ASSERT(int(aRes.mEcIm.size()) == aNbIm,"Incoh to check in cAppliApero::CDNP_Compense");
+                   for (int aKIm=0 ; aKIm<int(aRes.mEcIm.size()) ; aKIm++)
                    {
-                      aResidu += square_euclid(aRes.mEcIm[aKIm]);//  *ElSquare(aScN);
-                      if (std_isnan(aResidu))
+                      if (aVpds[aKIm] >0)
                       {
-                          std::cout <<  aRes.mEcIm[aKIm] << " " << aKIm << " " << aVCam[aKIm]->Name() << "\n";
-                          // std::cout << "CPT= " << aCpt << "\n";
-                          ELISE_ASSERT(false,"Nan residu\n");
+                         aResidu += square_euclid(aRes.mEcIm[aKIm]);//  *ElSquare(aScN);
+                         if (std_isnan(aResidu))
+                         {
+                             std::cout <<  aRes.mEcIm[aKIm] << " " << aKIm << " " << aVCam[aKIm]->Name() << "\n";
+                             // std::cout << "CPT= " << aCpt << "\n";
+                             ELISE_ASSERT(false,"Nan residu\n");
+                         }
                       }
-                   }
-               }
-               aResidu /= aNbCamOk;
-               aResidu = sqrt(aResidu);
-               aPdsIm = aPdtrIm.PdsOfError(aResidu);
-               aPdsIm *= pow(aNbCamOk-1,anObsOl.Pond().ExposantPoidsMult().Val());
+                  }
+                  aResidu /= aNbCamOk;
+                  aResidu = sqrt(aResidu);
+                  aPdsIm = aPdtrIm.PdsOfError(aResidu);
+                  aPdsIm *= pow(aNbCamOk-1,anObsOl.Pond().ExposantPoidsMult().Val());
 
-               if (aFiltre3D && (!aFiltre3D->InFiltre(aRes.mPTer)))
-               {
-                  aPdsIm = 0.0;
-               }
+                  if (aFiltre3D && (!aFiltre3D->InFiltre(aRes.mPTer)))
+                  {
+                     aPdsIm = 0.0;
+                  }
 
-               if (aPdsIm>0)
-               {
-               }
-               else
-               {
-                  aNbEtape = 0;
-               }
-           }
-           else
-           {
-              aNbEtape = 0;
+                  if (aPdsIm>0)
+                  {
+                  }
+                  else
+                  {
+                     aNbEtape = 0;
+                  }
+
+                  // On est forcement en aPdsIm>0, sinon on 
+                  if (WithEq)
+                  {
+                      AddInfoImageResidu(aRes.mPTer,aNUpl,aVCam,aVpds);
+                      for (int aKPose=0 ; aKPose < aNbIm ; aKPose++)
+                      {
+                          aVCam[aKPose]->AddPMoy
+                          (
+                              aNUpl.PK(aKPose),
+                              aRes.mPTer,
+                              aRes.mBSurH,
+                              aKPose,
+                              &aVpds,
+                              &aVCam
+                          );
+                      }
+                  }
+              }
+              else
+              {
+                 aNbEtape = 0;
+              }
            }
       }
 
@@ -418,11 +457,12 @@ void  cAppliApero::CDNP_Compense
       {
          cCelImTPM * aCel = aSet->CelFromInt(aVIdIm[aKIdIm]);
          cCam_NewBD * aCamNBD = static_cast<cCam_NewBD *>(aCel->ImTPM_GetVoidData());
-         aCamNBD->mStat.AddStat(aResidu,aPdsIm);
+         aCamNBD->mStat.AddStat(aResidu,aPdsIm,aNbCamOk);
       }
-      aVStat.at(aNbCamOk).AddStat(aResidu,aPdsIm);
+      aVStat.at(aNbCamOk).AddStat(aResidu,aPdsIm,aNbCamOk);
    }
 
+   DEBUG_LSQ= false;
    // std::cout << "-----------------------------\n";
 }
 
@@ -430,6 +470,8 @@ void  cAppliApero::CDNP_Compense
 
 void cAppliApero::CDNP_Compense(const std::string & anId,const cObsLiaisons & anObsOl)
 {
+    mDebugNumPts = 0;
+
     cCompile_BDD_NewPtMul * aCDN = CDNP_FromName(anId);
 
      if (aCDN==0)
@@ -504,21 +546,35 @@ void cAppliApero::CDNP_Compense(const std::string & anId,const cObsLiaisons & an
          const cStatResPM & aStat = aVStat[aKS];
          if (aStat.mNb)
          {
+             double aRes = sqrt(aStat.mSomPdsEr2 / aStat.mSomPds);
+             double aPercNN = (100.0*aStat.mNbNN) / aStat.mNb;
              std::cout << " Multipl=" << aKS
                        << " NbPts="  << aStat.mNb
-                       << " Res=" <<  sqrt(aStat.mSomPdsEr2 / aStat.mSomPds)
-                       << " %NN=" <<  (100.0*aStat.mNbNN) / aStat.mNb
+                       << " Res=" <<  aRes
+                       << " %NN=" <<  aPercNN
                        << "\n";
+             cXmlSauvExportAperoOneMult aXmlMult;
+             aXmlMult.Multiplicity() = aKS;
+             aXmlMult.Residual() = aRes;
+             aXmlMult.NbPts() = aStat.mNb;
+             aXmlMult.PercOk() = aPercNN;
+              
+             CurXmlE().OneMult().push_back(aXmlMult);
          }
+
     }
     std::cout << "-----------------------------------------------------------------\n";
     cCam_NewBD * aCamWorstRes = 0;
     cCam_NewBD * aCamWorstPerc = 0;
     double aWorstRes = -1;
     double aWorstPerc = 200;
+    double aAverRes   = 0.0;
+    double aSomPds   = 0.0;
 
     for  (int aKIm=0 ; aKIm<aNbIm ; aKIm++)
     {
+         cXmlSauvExportAperoOneIm  aXml;
+
          cCelImTPM * aCel = aSetPM->CelFromInt(aKIm);
          cCam_NewBD * aCamNBD = static_cast<cCam_NewBD *>(aCel->ImTPM_GetVoidData());
          const cStatResPM & aStat = aCamNBD->mStat;
@@ -526,6 +582,8 @@ void cAppliApero::CDNP_Compense(const std::string & anId,const cObsLiaisons & an
          double aRes = sqrt(aStat.mSomPdsEr2 / aStat.mSomPds);
          double aPerc =  (100.0*aStat.mNbNN) / aStat.mNb;
 
+         aSomPds  += aStat.mSomPds;
+         aAverRes += aStat.mSomPdsEr2;
 
          std::cout << "For pose=" << aCamNBD->mCam->Name()
                    << " NbPts="  << aStat.mNb
@@ -543,8 +601,22 @@ void cAppliApero::CDNP_Compense(const std::string & anId,const cObsLiaisons & an
             aWorstRes = aRes;
             aCamWorstRes = aCamNBD;
          }
+
+         aXml.Name() =  aCamNBD->mCam->Name();
+         aXml.Residual() = aRes;
+         aXml.PercOk() = aPerc;
+         aXml.NbPts() = aStat.mNb;
+         aXml.NbPtsMul() = aStat.mNbMult;
+
+         CurXmlE().OneIm().push_back(aXml);
     }
 
+    if (aSomPds) 
+    {
+        double aSqrtEr = sqrt(aAverRes/aSomPds);
+        CurXmlE().AverageResidual() = aSqrtEr;
+        std::cout << " ## Average Res " <<  aSqrtEr  << "\n";
+    }
     if (aCamWorstRes) 
         std::cout << " ## Worst Res " << aWorstRes << " for " << aCamWorstRes->mCam->Name() << "\n";
     if (aCamWorstPerc) 

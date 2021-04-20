@@ -44,6 +44,8 @@
           <!-- Si un seul pointe 2D, il y a un point 3D comme predict, mais pas mesure a exporter -->
           <Mes3DExportable Nb="?"  Type="bool"> </Mes3DExportable>
           <Incert Nb="?" Type="Pt3dr"> </Incert>
+          <Normale Nb="?" Type="Pt3dr"> </Normale>
+
           <LargeurFlou Nb="?" Type="double" Def="0.0"> </LargeurFlou>
           <ContenuPt Nb="?"  UnionType="true">
               <None Nb="?" Type="std::string"> </None> <!-- Pour k'sa compile -->
@@ -93,6 +95,8 @@ pas interfere avec format utilisateur basique, on separe -->
 
              <ShowDet Nb="?" Type="bool" Def="false"></ShowDet> <!-- Affichage du nom des points -->
              <RefInvis Nb="?" Type="bool" Def="false"></RefInvis> <!-- Affichage du nom des points -->
+             <UseMinMaxPt Nb="?" Type="bool" Def="false"></UseMinMaxPt> 
+             <!-- Pointe precis en min/max , par defaut non car perturbant pour "newbies" -->
         </SectionWindows>
 
        
@@ -122,11 +126,13 @@ pas interfere avec format utilisateur basique, on separe -->
                <FixedName Nb="*" Type="std::string"> </FixedName>
                <NameAuto Nb="?" Type="std::string" Def="NONE"> </NameAuto>  <!-- "" si pas de Name Auto -->
                <EnterName Nb="?" Type="bool" Def="false"> </EnterName>  <!-- "" si pas de Name Auto -->
+               <ForceExport3D Nb="?"  Type="bool" Def="true"> </ForceExport3D>
         </SectionInOut>
 
         <SectionImages Nb="1">
               <SetOfImages Nb="1" Type="std::string"> </SetOfImages>
               <ForceGray Nb="?" Type="bool" Def="false"> </ForceGray>
+              <Gama Nb="?" Type="double" Def="1.0"> </Gama>
               <!-- the conventional value NONE is equiv to no orient -->
               <KeyAssocOri Nb="?" Type="std::string"> </KeyAssocOri>
               <!-- Filter for visibility of points in image -->
@@ -143,6 +149,8 @@ pas interfere avec format utilisateur basique, on separe -->
              </ProfEstimator>
              <Masq3DFilterVis Nb="?" Type="std::string"> </Masq3DFilterVis>
              <PIMsFilterVis Nb="?" Type="std::string">   </PIMsFilterVis>
+             <DistMaxVisib  Nb="?" Type="double">        </DistMaxVisib>
+             <PatternNamePtsVisib  Nb="?" Type="cElRegex_Ptr"> </PatternNamePtsVisib>
         </SectionTerrain>
 
 

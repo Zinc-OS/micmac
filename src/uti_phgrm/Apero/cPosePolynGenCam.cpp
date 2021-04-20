@@ -80,6 +80,10 @@ tGrApero::TSom * cGenPoseCam::Som()
    return mSom;
 }
 
+void cGenPoseCam::UseRappelOnPose() const 
+{
+}
+
 
 
 bool cGenPoseCam::PreInit() const { return mPreInit; }
@@ -167,6 +171,7 @@ void    cGenPoseCam::AddPMoy
              const std::vector<cGenPoseCam*> *aVPose
         )
 {
+
    double aPds = (aBSurH-mAppli.Param().LimInfBSurHPMoy().Val());
    aPds /= (mAppli.Param().LimSupBSurHPMoy().Val() - mAppli.Param().LimInfBSurHPMoy().Val());
    if (aPds<0) return;

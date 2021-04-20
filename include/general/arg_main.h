@@ -287,6 +287,9 @@ template <class Type> const char * str_type(Type *);
 
 extern std::set<void *>  AllAddrEAM;
 extern std::list<std::string>  TheEmptyListEnum;
+extern std::map<void *,std::string>  MapValuesEAM;
+
+
 
 std::list<std::string> ModifListe(const std::list<std::string> &,const char * aNameType);
 
@@ -353,6 +356,7 @@ template <class Type> class ElArgMain : public GenElArgMain
 };
 
 bool EAMIsInit(void *);
+extern std::string StrInitOfEAM(void * anAdr) ;
 
 std::string StrFromArgMain(const std::string & aStr);
 
@@ -402,11 +406,12 @@ class LArgMain
 
         template <class Type> LArgMain & operator << (const ElArgMain<Type> & v)
         {
-                if (v.IsActif())
+             if (v.IsActif())
                _larg.push_back(v.dup());
             return * this;
         }
         ~LArgMain();
+        LArgMain & operator << (const LArgMain  & v);
 
         int Size() const;
 
@@ -457,6 +462,10 @@ int MMRunVisualMode
          std::vector<cMMSpecArg> & aVAO,
          std::string aFirstArg = ""
      );
+
+typedef void (*tActionOnHelp)(int argc,char ** argv);
+extern tActionOnHelp TheActionOnHelp;
+
 
 std::vector<char *>     ElInitArgMain
         (
@@ -617,6 +626,8 @@ int MergePly_main(int argc,char ** argv);
 int MICMAC_main(int argc,char ** argv);
 int FusionCarteProf_main(int argc,char ** argv);
 int Nuage2Ply_main(int argc,char ** argv);
+int Nuage2Homol_main(int argc,char ** argv);
+int Txt2Dat_main(int argc,char ** argv);
 int PlySphere_main(int argc,char ** argv);
 int San2Ply_main(int argc,char ** argv);
 
@@ -635,6 +646,7 @@ int Dmp2Xml_main(int argc,char ** argv);
 
 int Morito_main(int argc,char ** argv);
 int Liquor_main(int argc,char ** argv);
+int Luxor_main(int argc,char ** argv);
 
 
 
@@ -721,7 +733,7 @@ int DoAllDev_main(int argc,char ** argv);
 
 #endif
 
-#if (ELISE_QT_VERSION >= 4)
+#if ELISE_QT
     int SaisieMasqQT_main(int argc,char ** argv);
     int SaisieAppuisInitQT_main(int argc,char ** argv);
     int SaisieAppuisPredicQT_main(int argc,char ** argv);
@@ -744,7 +756,8 @@ int MPI2Ply_main(int argc,char ** argv);
 int MPI2Mnt_main(int argc,char ** argv);
 int CCL_main(int argc,char ** argv);
 int TDEpip_main(int argc, char **argv);
-
+int Sat3D_main(int argc, char **argv);
+int TiePHistoP_main(int argc, char **argv);
 
 int TestNewOriImage_main(int argc,char ** argv);
 int TestAllNewOriImage_main(int argc,char ** argv);
@@ -791,7 +804,7 @@ void Paral_Tiff_Dev
 
 /*Footer-MicMac-eLiSe-25/06/2007
 
-Ce logiciel est un programme informatique servant �  la mise en
+Ce logiciel est un programme informatique servant �  la mise en
 correspondances d'images pour la reconstruction du relief.
 
 Ce logiciel est régi par la licence CeCILL-B soumise au droit français et
@@ -807,17 +820,17 @@ seule une responsabilité restreinte pèse sur l'auteur du programme,  le
 titulaire des droits patrimoniaux et les concédants successifs.
 
 A cet égard  l'attention de l'utilisateur est attirée sur les risques
-associés au chargement,  �  l'utilisation,  �  la modification et/ou au
-développement et �  la reproduction du logiciel par l'utilisateur étant
-donné sa spécificité de logiciel libre, qui peut le rendre complexe �
-manipuler et qui le réserve donc �  des développeurs et des professionnels
+associés au chargement,  �  l'utilisation,  �  la modification et/ou au
+développement et �  la reproduction du logiciel par l'utilisateur étant
+donné sa spécificité de logiciel libre, qui peut le rendre complexe �
+manipuler et qui le réserve donc �  des développeurs et des professionnels
 avertis possédant  des  connaissances  informatiques approfondies.  Les
-utilisateurs sont donc invités �  charger  et  tester  l'adéquation  du
-logiciel �  leurs besoins dans des conditions permettant d'assurer la
+utilisateurs sont donc invités �  charger  et  tester  l'adéquation  du
+logiciel �  leurs besoins dans des conditions permettant d'assurer la
 sécurité de leurs systèmes et ou de leurs données et, plus généralement,
-�  l'utiliser et l'exploiter dans les mêmes conditions de sécurité.
+�  l'utiliser et l'exploiter dans les mêmes conditions de sécurité.
 
-Le fait que vous puissiez accéder �  cet en-tête signifie que vous avez
+Le fait que vous puissiez accéder �  cet en-tête signifie que vous avez
 pris connaissance de la licence CeCILL-B, et que vous en avez accepté les
 termes.
 Footer-MicMac-eLiSe-25/06/2007*/

@@ -44,12 +44,12 @@ Header-MicMac-eLiSe-25/06/2007*/
 //#define Pt2di  Pt2d<INT>
 //#define Pt2dr  Pt2d<REAL>
 
+template <class Type> class Box2d;
 class Output;
 class SegComp;
 class Seg2d;
 class cElTriangleComp;
 template <class Type> class Pt3d;
-
 
 inline INT  scal(INT v1 ,INT v2 ) { return v1 * v2;}
 inline REAL scal(REAL v1,REAL v2) { return v1 * v2;}
@@ -177,6 +177,8 @@ template <class Type> class Pt2d : public  ElStdTypeScal<Type>
      typedef Type        TypeScal;
      typedef Pt2d<Type>  TypeEff;
      static Pt2d  El0 () {return Pt2d(0,0);}
+
+     typename ElStdTypeScal<Type>::TypeScalReel Vol() const{return x*this->T2R(y);}
 
      typedef Pt2d<typename ElStdTypeScal<Type>::TypeVarProvReel> TypeProvPtScalR;
 
@@ -338,6 +340,7 @@ template <class Type> class Pt2d : public  ElStdTypeScal<Type>
      Output WhichMax();
      Output WhichMin();
 
+     Pt2d<Type> AbsP() const {return Pt2d<Type>(ElAbs(x),ElAbs(y));}
 
      private :
           void Verif_adr_xy();
@@ -411,7 +414,7 @@ Type scal(const Pt2d<Type> & p1,const Pt2d<Type> & p2)
 
 template <class Type>
 typename ElStdTypeScal<Type>::TypeScalReel  square_euclid(const Pt2d<Type> & p)
-                 {return ElSquare(p.x) + ElSquare( p.y);}
+                 {return ElSquare(typename ElStdTypeScal<Type>::TypeScalReel(p.x)) + ElSquare(typename ElStdTypeScal<Type>::TypeScalReel(p.y));}
 
 template <class Type>
 typename ElStdTypeScal<Type>::TypeScalReel  square_euclid(const Pt2d<Type> & p1,const Pt2d<Type> & p2)
@@ -463,12 +466,98 @@ extern std::istream & operator >> (std::istream & ifs,Pt2dr  &p);
 extern std::istream & operator >> (std::istream & ifs,Pt2di  &p);
 
 
+class cXml_Map2D;
+class cXml_Map2DElem;
+cXml_Map2D MapFromElem(const cXml_Map2DElem &);
+class cXml_Homot;
+
 class cElMap2D
 {
     public :
+         static cElMap2D * IdentFromType(int,const std::vector<std::string>* =0);
          virtual Pt2dr operator () (const Pt2dr & p) const = 0;
-    virtual ~cElMap2D(){}
+         virtual int Type() const = 0;
+         virtual ~cElMap2D(){}
+         virtual cElMap2D * Map2DInverse() const;
+         virtual cElMap2D * Simplify() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cElMap2D * Duplicate() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cElMap2D * Identity() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+
+         virtual int   NbUnknown() const;
+         virtual void  AddEq(Pt2dr & aCste,std::vector<double> & anEqX,std::vector<double> & anEqY,const Pt2dr & aP1,const Pt2dr & aP2 ) const;
+         virtual void  InitFromParams(const std::vector<double> &aSol);
+
+
+         void  SaveInFile(const std::string &);
+         static cElMap2D * FromFile(const std::string &);
+         virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
+
+          // Not yet commented
+          void Affect(const cElMap2D &);
+          virtual std::vector<double> Params() const;  // "Inverse" de InitFromParams
+          virtual std::vector<std::string> ParamAux() const;  // Pour eventuellement param sec de Polyn
+        private :
+           virtual bool Compatible(const cElMap2D *) const; // Pour l'affectation, peut faire un down cast 
 };
+
+class cComposElMap2D : public cElMap2D
+{
+     public :
+         virtual int Type() const ;
+         cComposElMap2D(const std::vector<cElMap2D *>  & aVMap);
+
+
+          static cComposElMap2D   NewFrom0();
+          static cComposElMap2D   NewFrom1(cElMap2D *);
+          static cComposElMap2D   NewFrom2(cElMap2D *,cElMap2D *);
+          static cComposElMap2D   NewFrom3(cElMap2D *,cElMap2D *,cElMap2D*);
+
+
+         virtual Pt2dr operator () (const Pt2dr & p) const ;
+         virtual cElMap2D * Map2DInverse() const;
+         virtual cElMap2D * Simplify() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
+     public :
+         std::vector<cElMap2D *> mVMap;
+};
+
+
+class ElHomot : public cElMap2D
+{
+      public :
+         ElHomot(Pt2dr aTrans = Pt2dr(0,0), double aScale = 1.0) ;
+         ElHomot(const cXml_Homot &) ;
+
+         Pt2dr operator () (const Pt2dr & p) const
+         {
+               return  mTr + p * mSc;
+         }
+         ElHomot operator * (const ElHomot & sim2) const;
+
+         virtual int Type() const ;
+         virtual  cElMap2D * Map2DInverse() const;
+         virtual cElMap2D * Duplicate() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cElMap2D * Identity() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
+         ElHomot inv () const;
+
+         virtual int   NbUnknown() const;
+         virtual void  AddEq(Pt2dr & aCste,std::vector<double> & anEqX,std::vector<double> & anEqY,const Pt2dr & aP1,const Pt2dr & aP2 ) const;
+         virtual void  InitFromParams(const std::vector<double> &aSol);
+         virtual std::vector<double> Params() const;  
+
+         const Pt2dr  & Tr() const {return mTr;}
+         const double & Sc() const {return mSc;}
+
+      private :
+        Pt2dr  mTr;
+        double mSc;
+};
+
+class cXml_Homot;
+ElHomot      Xml2EL(const cXml_Homot &);
+cXml_Homot   EL2Xml(const ElHomot &);
+
 
 class ElSimilitude : public cElMap2D
 {
@@ -514,6 +603,16 @@ class ElSimilitude : public cElMap2D
                      );
          }
 
+         virtual int   NbUnknown() const;
+         virtual void  AddEq(Pt2dr & aCste,std::vector<double> & anEqX,std::vector<double> & anEqY,const Pt2dr & aP1,const Pt2dr & aP2 ) const;
+         virtual void  InitFromParams(const std::vector<double> &aSol);
+         virtual std::vector<double> Params() const;  
+
+         virtual int Type() const ;
+         virtual  cElMap2D * Map2DInverse() const;
+         virtual cElMap2D * Duplicate() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cElMap2D * Identity() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+         virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
          ElSimilitude inv () const
          {
               return ElSimilitude
@@ -531,13 +630,17 @@ class ElSimilitude : public cElMap2D
           Pt2dr  _sc;
 };
 
+ElSimilitude  L2EstimSimHom(const class ElPackHomologue & aPack);
+
+
+
 class cElHomographie;
 class ElAffin2D : public cElMap2D
 {
      public :
         ElAffin2D
         (
-            Pt2dr im00,  // partie affine
+            Pt2dr im00,  // partie affine  -- translation
             Pt2dr im10,  // partie vecto
             Pt2dr im01  // partie vecto
         );
@@ -582,6 +685,17 @@ class ElAffin2D : public cElMap2D
        ElAffin2D operator * (const ElAffin2D & sim2) const;
        ElAffin2D operator + (const ElAffin2D & sim2) const;
        ElAffin2D inv() const;
+
+       virtual int   NbUnknown() const;
+       virtual void  AddEq(Pt2dr & aCste,std::vector<double> & anEqX,std::vector<double> & anEqY,const Pt2dr & aP1,const Pt2dr & aP2 ) const;
+       virtual void  InitFromParams(const std::vector<double> &aSol);
+       virtual std::vector<double> Params() const;  
+
+       virtual  cElMap2D * Map2DInverse() const;
+       virtual int Type() const ;
+       virtual cElMap2D * Duplicate() ;  
+       virtual cElMap2D * Identity() ;  // En gal retourne this, mais permet au vecteur a 1 de se simplifier
+       virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
 
        Pt2dr I00() const {return mI00;}
        Pt2dr I10() const {return mI10;}
@@ -743,7 +857,13 @@ template <class Type> class Pt3d : public  ElStdTypeScal<Type>
 
      Pt3d<Type>(const Pt2d<Type>&,Type z); // to please visual
 
+     Pt3d<Type> mcbyc(const Pt3d<Type> & p2) const
+                {return Pt3d(x*p2.x,y*p2.y,z*p2.z);}
+     Pt3d<Type> dcbyc(const Pt3d<Type> & p2) const
+                {return Pt3d(x/p2.x,y/p2.y,z/p2.z);}
 
+     static Pt3d<Type> RandC() {return Pt3d<Type>(NRrandC(),NRrandC(),NRrandC());}
+     static Pt3d<Type> Rand3() {return Pt3d<Type>(NRrandom3(),NRrandom3(),NRrandom3());}
 
      Pt3d(Type X,Type Y,Type Z);
      Pt3d<Type> operator + (const Pt3d<Type> & p2) const;
@@ -753,6 +873,9 @@ template <class Type> class Pt3d : public  ElStdTypeScal<Type>
 
      Pt3d<Type> operator - (const Pt3d & p2) const;
      Pt3d<Type> operator - () const;
+     typename ElStdTypeScal<Type>::TypeScalReel Vol() const{return x*(y*this->T2R(z));}
+     Pt3d<Type> PVolTarget(double aVolTarget) const {return (*this) * pow(aVolTarget/Vol(),1/3.0);}
+     Pt3d<Type> PVolUnite() const {return PVolTarget(1.0);}
 
      typename ElStdTypeScal<Type>::TypeBool  operator == (const Pt3d<Type> & p2) const {return (x==p2.x) && (y==p2.y) && (z==p2.z);}
 
@@ -774,7 +897,6 @@ template <class Type> class Pt3d : public  ElStdTypeScal<Type>
      static Pt3d<Type> FromTab(const Type *);
      std::vector<Type> ToTab() const;
      static Pt3d<Type> FromTab(const std::vector<Type> &);
-
 
      Pt3d<Type> AbsP() const {return Pt3d<Type>(ElAbs(x),ElAbs(y),ElAbs(z));}
      /*
@@ -958,7 +1080,6 @@ class Interval
 
 
 template <class Type> class BoxFreemanCompil;
-template <class Type> class Box2d;
 
 template <class Type> Box2d<Type> Sup(const Box2d<Type> & b1, const Box2d<Type> & b2);
 template <class Type> Box2d<Type> Inf(const Box2d<Type> & b1, const Box2d<Type> & b2);
@@ -1110,6 +1231,7 @@ template <class Type> class Box2d
 
 typedef Box2d<INT> Box2di;
 typedef Box2d<REAL>  Box2dr;
+cElMap2D *  MapPolFromHom(const ElPackHomologue & aPack,const Box2dr & aBox,int aDeg,int aRabDegInv);
 Pt2di BoxPClipedIntervC(const Box2di &,const Pt2di &);
 
 extern std::istream & operator >> (std::istream & ifs,Box2dr  &aBox);
@@ -1430,6 +1552,7 @@ class cTransfo3D
 {
      public :
           virtual std::vector<Pt3dr> Src2Cibl(const std::vector<Pt3dr> &) const = 0;
+          static cTransfo3D * Alloc(const std::string & aName,const std::string & aDir) ;
 
 };
 
@@ -1443,9 +1566,9 @@ class cChSysCo : public cTransfo3D
            static cChSysCo * Alloc(const std::string & aName,const std::string & aDir) ;
 
            void ChangCoordCamera(const std::vector<ElCamera *> & aVCam,bool ForceRot);
-     private :
            //   cChSysCo(const cChangementCoordonnees &,const std::string &) ;
            cChSysCo(cSysCoord * aSrc,cSysCoord * aCibl);
+     private :
            ~cChSysCo();
            cSysCoord * mSrc;
            cSysCoord * mCibl;

@@ -87,6 +87,7 @@ int ExportXmlGcp2Txt_main(int argc,char ** argv)
 int ExportXmlGps2Txt_main(int argc,char ** argv)
 {
 	std::string aFile, aDir, aOut;
+    bool addName(1), addTime(1), addPos(1);
 	bool addInc = false;
 	bool addQI = false;
 	
@@ -96,13 +97,16 @@ int ExportXmlGps2Txt_main(int argc,char ** argv)
           LArgMain() << EAMC(aDir, "Directory")
 					 << EAMC(aFile, "xml GPS file",  eSAM_IsExistFile),
           LArgMain() << EAM(aOut,"Out",false,"output txt file name : def=File.txt")
+                     << EAM(addName,"addName",false,"Export Name; def=true")
+                     << EAM(addTime,"addTime",false,"Export Time; def=true")
+                     << EAM(addPos,"addPos",false,"Export GPS Position; def=true")
 					 << EAM(addInc,"addInc",false,"Export also uncertainty values ; Def=false",eSAM_IsBool)
 					 << EAM(addQI,"addQI",false,"Export also Quality Indicator values ; Def=false",eSAM_IsBool)
     );
     
     //read .xml file
     cDicoGpsFlottant aDico = StdGetFromPCP(aFile,DicoGpsFlottant);
-    std::list<cOneGpsDGF> aOneGpsDAFList = aDico.OneGpsDGF();
+    // std::list<cOneGpsDGF> aOneGpsDAFList = aDico.OneGpsDGF();
     
     //write data in .txt file
     if(!MMVisualMode)
@@ -110,10 +114,25 @@ int ExportXmlGps2Txt_main(int argc,char ** argv)
 		FILE * aFP = FopenNN(aOut,"w","ExportXmlGps2Txt_main");
 		cElemAppliSetFile aEASF(aDir + ELISE_CAR_DIR + aOut);
 		
-		for (std::list<cOneGpsDGF>::iterator itP=aOneGpsDAFList.begin(); itP != aOneGpsDAFList.end(); itP ++)
+		// for (std::list<cOneGpsDGF>::iterator itP=aOneGpsDAFList.begin(); itP != aOneGpsDAFList.end(); itP ++)
+		for (auto itP=aDico.OneGpsDGF().begin(); itP != aDico.OneGpsDGF().end(); itP ++)
 		{
-			fprintf(aFP, "%s %lf %lf %lf %lf",itP->NamePt().c_str(), itP->TimePt(), itP->Pt().x, itP->Pt().y, itP->Pt().z);
-			
+            //fprintf(aFP, "%s %lf %lf %lf %lf",itP->NamePt().c_str(), itP->TimePt(), itP->Pt().x, itP->Pt().y, itP->Pt().z);
+            if(addName)
+            {
+                fprintf(aFP,"%s ",itP->NamePt().c_str());
+            }
+
+            if(addTime)
+            {
+                fprintf(aFP,"%lf ",itP->TimePt());
+            }
+
+            if(addPos)
+            {
+                fprintf(aFP,"%lf %lf %lf ",itP->Pt().x, itP->Pt().y, itP->Pt().z);
+            }
+
 			if(addInc)
 			{
 				fprintf(aFP,"%lf %lf %lf\n", itP->Incertitude().x, itP->Incertitude().y, itP->Incertitude().z);

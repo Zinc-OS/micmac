@@ -431,12 +431,27 @@ void MyBisCr::ShowLiaison()
 
 void  MyBisCr::write_liaison()
 {
-   if (StdPostfix(mNameXML)=="dat")
+   if (1)
    {
-         ELISE_fp aFP(mNameXML.c_str(),ELISE_fp::WRITE);
+      cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc("./");
+      for (int aK=0 ; aK< 2 ; aK++)
+      {
+          ElPackHomologue aPackSauv = mLiaisons;
+          // aPackSauv.ApplyHomographies(mH1,mH2);
+          std::string aExt = (aK==0) ? std::string("txt") : std::string("dat");
+          std::string aNameH = anICNM->Assoc1To2("NKS-Assoc-CplIm2Hom@-Man@" + aExt,mName1,mName2,true);
+          aPackSauv.StdPutInFile(aNameH);
+          // std::cout << "NAMEH=" << aNameH << "\n";
+      }
+   }
+
+   if ((StdPostfix(mNameXML)=="dat") || (StdPostfix(mNameXML)=="txt"))
+   {
+         // ELISE_fp aFP(mNameXML.c_str(),ELISE_fp::WRITE);
          ElPackHomologue aPackSauv = mLiaisons;
          aPackSauv.ApplyHomographies(mH1,mH2);
-         aPackSauv.write(aFP);
+         // aPackSauv.write(aFP);
+        aPackSauv.StdPutInFile(mNameXML);
    }
    else if (StdPostfix(mNameXML)=="xml")
    {
@@ -991,7 +1006,7 @@ TestScroller::TestScroller
 
      mCaseProfil =    new CaseGPUMT
                       (
-                         mPopUp,"0 0",Pt2di(2,2),
+                         mPopUp,"0 0",Pt2di(2,3),
                          MMIcone("Profil").in(0) *255
                       );
 

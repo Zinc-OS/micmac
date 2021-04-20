@@ -81,16 +81,18 @@ int Export2Ply_main(int argc,char ** argv)
     std::string aStrChSys;
     double aMul = 1.0;
     bool   aMulIncAlso = true;
-    Pt3di aCoul(255,0,0);
-    Pt3di aCoulLP(255,0,0);
+    Pt3di aCoul(0,0,255);
+    Pt3di aCoulLP(0,0,0);
     double aRay=0;
     int aNbPts=5;
     int aScale=1;
     int aBin=1;
     int aDiffColor=0;
-    std::vector<Pt3di> aVCol;
-
-
+    Pt3dr aOffset(0,0,0);
+	bool aGpsFile=false;
+	bool aSFP=false;
+	bool aShow=false;
+	
     ElInitArgMain
     (
         argc,argv,
@@ -98,21 +100,27 @@ int Export2Ply_main(int argc,char ** argv)
                     << EAMC(NameFile,"Name File of Points Coordinates", eSAM_IsExistFile),
         LArgMain()  << EAM(aRay,"Ray",false,"Plot a sphere per point")
                     << EAM(aNbPts,"NbPts",true,"Number of Pts / direc (Def=5, give 1000 points) only with Ray > 0")
-                    << EAM(aScale, "Scale",true,"Scaling factor")
+                    << EAM(aScale,"Scale",true,"Scaling factor")
                     << EAM(aCoul,"FixColor",true,"Fix the color of points")
                     << EAM(aCoulLP,"LastPtColor",true,"Change color only for last point")
-                    << EAM(aDiffColor, "ChangeColor",false,"Change the color each number of points : not with FixColor")
-                    << EAM(Out, "Out",true, "Default value is NameFile.ply")
+                    << EAM(aDiffColor,"ChangeColor",false,"Change the color each number of points : not with FixColor")
+                    << EAM(Out,"Out",true, "Default value is NameFile.ply")
                     << EAM(aBin,"Bin",true,"Generate Binary or Ascii (Def=1, Binary)")
+                    << EAM(aOffset,"OffSet",true,"Subtract an offset to all points")
+                    << EAM(aGpsFile,"GpsXML",true,"GPS xml input file; Def=false")
+                    << EAM(aSFP,"ShiftBFP",true,"Shift by substructing frist point to all ; Def=false")
+                    << EAM(aShow,"Show",true,"Show points ; Def=false")
     );
 
     if (MMVisualMode) return EXIT_SUCCESS;
 
     char * aLine;
     int aCpt=0;
+    std::vector<Pt3di> aVCol;
     std::vector<Pt3dr> aPoints;
     std::vector<Pt3dr> aVInc;
     std::vector<std::string> aVName;
+    std::vector<int> aVQ;
 
     if (!MMVisualMode)
     {
@@ -154,28 +162,51 @@ int Export2Ply_main(int argc,char ** argv)
 
         if (aType==eAppXML)
         {
-            if (Out==NameFile)
-                Out = "GCPOut_"+NameFile;
-                cDicoAppuisFlottant aD = StdGetObjFromFile<cDicoAppuisFlottant>
-                                     (
-                                          NameFile,
-                                          StdGetFileXMLSpec("ParamChantierPhotogram.xml"),
-                                          "DicoAppuisFlottant",
-                                          "DicoAppuisFlottant"
-                                     );
+				if (Out==NameFile)
+					Out = "GCPOut_"+NameFile;
+                if(aGpsFile)
+                {
+					cDicoGpsFlottant aDico =  StdGetFromPCP(NameFile,DicoGpsFlottant);
+					for(auto IT=aDico.OneGpsDGF().begin();IT!=aDico.OneGpsDGF().end();IT++)
+					{
+						aPoints.push_back(IT->Pt());
+                        if(IT->TagPt() == 1)
+                        {
+                            aVCol.push_back(aCoul);
+                        }
+                        else
+                        {
+                            Pt3di aCoulMP(255,0,0);
+                            aVCol.push_back(aCoulMP);
+                        }
+						aVInc.push_back(IT->Incertitude());
+                        aVName.push_back(IT->NamePt());
+                        aVQ.push_back(IT->TagPt());
+					}
+				}
+				else
+				{
+					cDicoAppuisFlottant aD = StdGetObjFromFile<cDicoAppuisFlottant>
+										 (
+											  NameFile,
+											  StdGetFileXMLSpec("ParamChantierPhotogram.xml"),
+											  "DicoAppuisFlottant",
+											  "DicoAppuisFlottant"
+										 );
 
-              for
-              (
-                    std::list<cOneAppuisDAF>::iterator itA=aD.OneAppuisDAF().begin();
-                    itA!=aD.OneAppuisDAF().end();
-                    itA++
-              )
-              {
-                  aPoints.push_back(itA->Pt());
-                  aVCol.push_back(aCoul);
-                  aVInc.push_back(itA->Incertitude());
-                  aVName.push_back(itA->NamePt());
-              }
+					for
+					(
+						std::list<cOneAppuisDAF>::iterator itA=aD.OneAppuisDAF().begin();
+						itA!=aD.OneAppuisDAF().end();
+						itA++
+					)
+					{
+					  aPoints.push_back(itA->Pt());
+					  aVCol.push_back(aCoul);
+					  aVInc.push_back(itA->Incertitude());
+					  aVName.push_back(itA->NamePt());
+					}
+				}
         }
         else
         {
@@ -226,7 +257,27 @@ int Export2Ply_main(int argc,char ** argv)
 
     ELISE_ASSERT(aDiffColor < (int) aPoints.size(), "Can't be superior to number of points in input");
 
-     //if we do not want to keep all points
+    if(aOffset.x != 0 || aOffset.y !=0 || aOffset.z != 0)
+    {
+		for(unsigned int aP=0; aP<aPoints.size(); aP++)
+		{
+            aPoints.at(aP).x = aPoints.at(aP).x - aOffset.x;
+            aPoints.at(aP).y = aPoints.at(aP).y - aOffset.y;
+            aPoints.at(aP).z = aPoints.at(aP).z - aOffset.z;
+		}
+	}
+	
+	if(aSFP)
+	{
+		Pt3dr aFP = aPoints.at(0);
+		for(unsigned int aP=0; aP<aPoints.size(); aP++)
+		{
+			aPoints.at(aP).x = aPoints.at(aP).x - aFP.x;
+			aPoints.at(aP).y = aPoints.at(aP).y - aFP.y;
+			aPoints.at(aP).z = aPoints.at(aP).z - aFP.z;
+		}
+	}
+    //if we do not want to keep all points
     if((int)aScale != 1)
     {
         int aIndice=0;
@@ -263,11 +314,13 @@ int Export2Ply_main(int argc,char ** argv)
     std::list<std::string> aVCom;
     std::vector<const cElNuage3DMaille *> aVNuage;
 
-
-    std::cout << "fixed:\n" << std::fixed;
-    std::cout << aPoints.size() << std::endl;
-    for(u_int i=0; i<aPoints.size(); i++)
-        std::cout << aPoints.at(i) << std::endl;
+	if(aShow)
+	{
+		std::cout << "fixed:\n" << std::fixed;
+		std::cout << aPoints.size() << std::endl;
+		for(u_int i=0; i<aPoints.size(); i++)
+			std::cout << aPoints.at(i) << std::endl;
+	}
 
     //if we want to change color each "aDiffColor" time
     int aMinValue = 0;
@@ -352,7 +405,7 @@ int Export2Ply_main(int argc,char ** argv)
 
 
 
-    return 1;
+    return EXIT_SUCCESS;
 }
 
 /*Footer-MicMac-eLiSe-25/06/2007

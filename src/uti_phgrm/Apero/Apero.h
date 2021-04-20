@@ -43,6 +43,9 @@ Header-MicMac-eLiSe-25/06/2007*/
 #include "cParamApero.h"
 #include "BundleGen.h"
 
+double DistanceMatr(const ElRotation3D & aR1,const ElRotation3D & aR2);
+
+class cImplemBlockCam;
 
 
 extern bool ResidualStepByStep ;
@@ -101,11 +104,15 @@ class cOneImageOfLayer;
 class cClassEquivPose;
 class cRelEquivPose;
 
-class cImplemBlockCam;
+
 class cPoseCdtImSec;
 
 std::vector<cGenPoseCam *> ToVecGP(const std::vector<cPoseCam *> &);
 std::vector<cPoseCam *> ToVecDownCastPoseCamNN(const std::vector<cGenPoseCam *> &);
+
+// Compilation des blocs, avant init
+class cPreCB1Pose;
+class cPreCompBloc;
 
 /************************************************************/
 /*                                                          */
@@ -117,7 +124,8 @@ class cObsCentre
 {
     public :
        Pt3dr                 mCentre;
-       Pt3dr                 mIncOnC;
+       Pt3dr                 mIncertOnC;
+       bool                  mHasObsC;
        bool                  mVitFiable;
        cTplValGesInit<Pt3dr> mVitesse;
 };
@@ -406,6 +414,7 @@ class cGenPoseCam
          tGrApero::TSom * Som();
          virtual Pt2di SzCalib() const = 0;
     protected :
+          virtual void UseRappelOnPose() const;
           cGenPoseCam(cAppliApero & anAppli,const std::string & aName);
    
           cAppliApero & mAppli;
@@ -451,6 +460,31 @@ class cPosePolynGenCam : public  cGenPoseCam
          cPolynomial_BGC3M2D *   mCam;
          cPolynBGC3M2D_Formelle  mCamF;
 };
+
+class cStructRigidInit
+{
+    public :
+        cStructRigidInit(cPoseCam * RigidMere,const ElRotation3D &);
+
+        cPoseCam *   mCMere;    
+        ElRotation3D mR0m1L0 ;  //  R0-1 L0 = matrice de passage selon notaion cImplemBlockCam.cpp
+};
+
+class cPreCB1Pose
+{
+   public :
+       cPreCB1Pose(const ElRotation3D &);
+       const ElRotation3D mRot;
+};
+class cPreCompBloc
+{
+    public :
+        cPreCompBloc(const std::string  & aNameBloc);
+        std::vector<cPoseCam*> mGrp;
+        const std::string            mNameBloc;
+};
+
+
 
 class cPoseCam : public cGenPoseCam
 {
@@ -531,6 +565,7 @@ class cPoseCam : public cGenPoseCam
           void  ShowRel(const cTraceCpleCam &,const cPoseCam & aCam2) const;
 
          // Si true requiert une initialisation complete
+          bool ProfIsInit() const;
           int Prof2Init() const;
           void Set0Prof2Init();
           void UpdateHeriteProf2Init(const cPoseCam &) ;
@@ -547,7 +582,7 @@ class cPoseCam : public cGenPoseCam
           ElRotation3D   CurRot() const;
           Pt3dr CurCentre() const;
           Pt3dr CurCentreOfPt(const Pt2dr & ) const;
-          void SetCurRot(const ElRotation3D & aRot);
+          void PCSetCurRot(const ElRotation3D & aRot);
           void  SetBascRig(const cSolBasculeRig & aSBR);
 
 
@@ -595,6 +630,19 @@ class cPoseCam : public cGenPoseCam
 
 
           cEqOffsetGPS *   EqOffsetGPS();
+         // Relatif a un couple dans un bloc
+          void SetSRI(cStructRigidInit * aSRI);
+          cStructRigidInit*  GetSRI(bool SVP) const;
+
+          // Dand cImplemBlockCam.cpp 
+          cPreCompBloc * GetPreCompBloc(bool SVP) const; // SVP => can be 0
+          void   SetPreCompBloc(cPreCompBloc *);
+          cPreCB1Pose *  GetPreCB1Pose(bool SVP) const; // SVP => can be 0
+          void  SetPreCB1Pose(cPreCB1Pose *);
+          void UseRappelOnPose() const override;
+          int DifBlocInf1(const cPoseCam &) const; // Return "Many" if not initialized
+          void SetNumTimeBloc(int aNum);
+
      private  :
 
           void AssertHasObsCentre() const;
@@ -682,6 +730,12 @@ class cPoseCam : public cGenPoseCam
 
           CamStenope *                 mCamNonOrtho;
           cEqOffsetGPS *               mEqOffsetGPS;
+          cStructRigidInit *           mSRI;
+          cPreCompBloc *               mBlocCam;
+          int                          mNumTimeBloc;
+          cPreCB1Pose *                mPoseInBlocCam;
+          bool                         mUseRappelPose;  // Do we use a "rappel" to a given value
+          ElRotation3D                 mRotURP;  // Rotation use Rappel Pose
 };
 
 
@@ -964,10 +1018,15 @@ class cOneCombinMult
         cGenPoseCam *  GenPose0() const;
         cGenPoseCam *  GenPoseK(int aK) const;
         void AddLink(cAppliApero &);
+	void InitRapOnZ(const cRapOnZ *,cAppliApero & anAppli);
+	bool RappelOnZApply() const;
     private :
 	 cManipPt3TerInc  * mPLiaisTer;
 	 std::vector<int>   mNumCams;
 	 std::vector<cGenPoseCam *>  mGenVP;
+	 // Pour savoir le rappel on Z calcule 
+	 const cRapOnZ *   mRapOnZ;
+	 bool        mRappelOnZApply;
 };
 
 Pt3dr TestInterFaisceaux
@@ -986,6 +1045,17 @@ Pt3dr InterFaisceaux
            const cNupletPtsHomologues  &   aNPt
       );
 
+// Pour pouvoir optionnellement reconstituer les TieP originaux
+// Par exemple dans l'export
+
+class cSingleTieP
+{
+    public :
+      int mK1;
+      int mK2;
+      Pt2dr mP1;
+      Pt2dr mP2;
+};
 
 class cOnePtsMult
 {
@@ -1001,7 +1071,7 @@ class cOnePtsMult
 
         const Pt2dr& P0()  const;
         const Pt2dr& PK(int ) const ;
-        void Add(int aNum,const Pt2dr & aP,bool IsFirstSet);
+        void AddPt2PMul(int aNum,const Pt2dr & aP,bool IsFirstSet,double aPds);
         cOnePtsMult();
         const tFixedSetInt & Flag() const; 
         void SetCombin(cOneCombinMult *);
@@ -1009,7 +1079,9 @@ class cOnePtsMult
         cOneCombinMult * OCM();
         const  cNupletPtsHomologues & NPts() const;
 
-        int  InitPdsPMul(double aPds,std::vector<double> &) const;
+        //  NbRealRotIsInit Nombre de rot reellement init, peut etre > si pts elim because ZU
+
+        int  InitPdsPMul(double aPds,std::vector<double> &,int * NbRealRotIsInit=0) const;
 
         const cResiduP3Inc * ComputeInter
                      (
@@ -1034,6 +1106,8 @@ class cOnePtsMult
 
          bool OnPRaz() const;
          void SetOnPRaz(bool);
+         void AddSTP(const cSingleTieP & aSTP);
+         const std::list<cSingleTieP> & LSTP();
 
     private :
         double              mMemPds;
@@ -1046,6 +1120,7 @@ class cOnePtsMult
   // tous les points appartiennent au plan de rappel
         U_INT1                 mOnPlaneRapOnz;
         U_INT1                 mMemPtOk;
+        std::list<cSingleTieP> mLSTP;
 };
 
 
@@ -1075,6 +1150,20 @@ class cOneElemLiaisonMultiple
 	 cGenPoseCam *   mGenPose;
 };
 
+class cStatErB
+{
+   public :
+      cStatErB();
+
+      void AddLab(eTypeResulPtsBundle,double aPds=1 );
+      void AddLab(const cStatErB & aS2);
+      void ShowStatErB();
+   private : 
+      double mStatRes[(int)eTRPB_NbVals] ;
+      double mNbTot;
+};
+
+
 class cStatObs
 {
     public :
@@ -1087,6 +1176,7 @@ class cStatObs
          double PdsEvol() const;
          double MaxEvol() const;
          double MoyEvol() const;
+         cStatErB & StatErB();
     private :
          void AssertPdsEvolNN() const;
 
@@ -1095,6 +1185,7 @@ class cStatObs
          double mMaxEvol;
          double mPdsEvol;
          double mSomEvol;
+         cStatErB mStatErB;
 };
 
 /*
@@ -1249,7 +1340,7 @@ class cObsLiaisonMultiple
                       bool packMustBeSwapped=false // file aNamePack contains the couples in inverse order (the first point belongs to aName2 and the second to aName1)
                 );
 
-           void AddCple(int anI1,int anI2,const ElCplePtsHomologues&,bool IsFirstSet);
+           void AddCple(int anI1,int anI2,const ElCplePtsHomologues&,bool IsFirstSet,double aPds);
 
 
           cAppliApero &                              mAppli;
@@ -1288,6 +1379,7 @@ typedef enum
   eModeAGPIm,
   eModeAGPHypso,
   eModeAGPNormale,
+  eModeAGPNormaleByC,//optical center
   eModeAGPNoAttr,
   eModeAGPNoPoint
 } eModeAGP;
@@ -1965,11 +2057,34 @@ class cSetPMul1ConfigTPM;
 class cSetTiePMul;
 class cCompile_BDD_NewPtMul;
 class cStatResPM;
+class cInfoAccumRes;
+class cAccumResidu;
 
 
 class cAppliApero : public NROptF1vND
 {
     public :
+       void ExportImageResidu() ;
+       void ExportImageResidu(const std::string & aName,const cAccumResidu &) ;
+
+
+        void AddInfoImageResidu
+             (
+                 const Pt3dr &                 aPt,
+                 const  cNupletPtsHomologues & aNupl,
+                 const std::vector<cGenPoseCam *> aVP,
+                 const std::vector<double> &  aVpds
+             );
+        void AddOneInfoImageResidu
+             (
+                 const cInfoAccumRes & anInfo,
+                 const std::string &   aName,
+                 Pt2di                 aSz,
+                 double                aFactRed,
+                 bool                  OnlySign,
+                 int                   aDeg
+             );
+
 
         std::string GetNewIdCalib(const std::string & aLongName);
         std::string GetNewIdIma(const std::string & aLongName);
@@ -2193,8 +2308,29 @@ class cAppliApero : public NROptF1vND
        void CDNP_Compense(const std::string & anId,const cObsLiaisons &);
 
         void CDNP_Compense(std::vector<cStatResPM> & ,cSetPMul1ConfigTPM*,cSetTiePMul*,const cObsLiaisons &);
+        bool IsLastEtapeOfLastIter() const;
+
+        // Ne genere pas d'erreur mais met aNameTime a "" si pb (aucune ou multiple)
+        ElRotation3D  SVPGetRotationBloc(const std::string & aNameBloc,const std::string& aNameCam,std::string & aNameTime);
+        //  Genere erreur si moindre probleme
+        ElRotation3D  GetUnikRotationBloc(const std::string & aNameBloc,const std::string& aNameCam);
+
+        void PreInitBloc(const std::string & aNameBloc);
+        int  LevStaB() const;
+        bool MemoSingleTieP() const;
+        bool ExportTiePEliminated() const;
+        bool DebugEliminateNumTieP(int aNum) const
+        {
+            if (! mUseVDETp)
+               return false;
+            return CalcDebugEliminateNumTieP(aNum);
+        }
+
+        const cRappelPose * PtrRP() const;
+
 
     private :
+       bool CalcDebugEliminateNumTieP(int aNum) const;
 
        void SetPdsRegDist(const cXmlPondRegDist *);
 
@@ -2406,6 +2542,7 @@ class cAppliApero : public NROptF1vND
 
         void AddOneObservationsRelGPS(const cObsRelGPS &);
         void AddObservationsRelGPS(const std::list<cObsRelGPS> & aLO);
+        void AddObservationsBaseGpsInit();
 
         void AddObservationsRigidGrp(const std::list<cObsRigidGrpImage> &,bool IsLastIter,cStatObs & aSO);
         void AddObservationsRigidGrp(const cObsRigidGrpImage &,bool IsLastIter,cStatObs & aSO);
@@ -2484,7 +2621,7 @@ class cAppliApero : public NROptF1vND
 
 	void  ExportFlottant(const cExportPtsFlottant & anEPF);
 
-        void BasculePoints (const cBasculeOnPoints &,
+        cSolBasculeRig BasculePoints (const cBasculeOnPoints &,
                             cSetName &            aSelectorEstim,
                             cElRegex &            aSelectorApply
              );
@@ -2597,6 +2734,7 @@ class cAppliApero : public NROptF1vND
         const cEtapeCompensation * mCurEC;
         bool                       mIsLastIter;
         bool                       mIsLastEtape;
+        bool                       mIsLastEtapeOfLastIter;
         double                     mScoreLambda0;
         double                     mScoreLambda1;
 
@@ -2621,6 +2759,7 @@ class cAppliApero : public NROptF1vND
 
         std::map<std::string,cRelEquivPose *>   mRels;
         std::map<std::string,cImplemBlockCam *> mBlockCams;
+        bool                                    mHasBlockCams;
         std::map<std::string,cAperoOffsetGPS *> mDicoOffGPS;
         int                                     mNumSauvAuto;
 
@@ -2649,8 +2788,10 @@ class cAppliApero : public NROptF1vND
          double mNbPtsFlot;
          double mMaxDistFlot;
          double mSomDistFlot;
+         double mSomDistXYFlot;
          Pt3dr  mSomEcPtsFlot;
          Pt3dr  mSomAbsEcPtsFlot;
+         Pt3dr  mSomRmsEcPtsFlot;
          Pt3dr  mMaxAbsEcPtsFlot;
 
          // Utilise pour genere les identifiant permettant d'interpreter les incertitudes
@@ -2664,10 +2805,18 @@ class cAppliApero : public NROptF1vND
          std::vector<cCompile_BDD_NewPtMul *>           mVectNewBDL;
          // std::vector<cGenPoseCam*>                      mVCamNewB;
          // cManipPt3TerInc *                              mGlobManiP3TI;  pas la bonne voie
+         std::map<std::string,cAccumResidu *> mMapAR;
+
+         std::string mDirExportImRes;
+         FILE *      mFileExpImRes;
+         int         mLevStaB;
+
+         // DebugVecElimTieP
+         bool  mUseVDETp;
+         std::vector<int>  mNumsVDETp;
+         int               mDebugNumPts;
+         const cRappelPose * mRappelPose;
 };
-
-
-
 
 #define ADDALLMAJ(aMes) AddAllMajick(__LINE__,__FILE__,aMes)
 

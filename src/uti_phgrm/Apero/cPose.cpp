@@ -36,7 +36,813 @@ English :
     See below and http://www.cecill.info.
 
 Header-MicMac-eLiSe-25/06/2007*/
-#include "Apero.h"
+
+// #define _ELISE_ALGO_GEOM_QDT_H 1
+// #define _ELISE_ALGO_GEOM_QDT_IMPLEM_H 1
+// #define __QDT_INSERTOBJ__ 1
+
+
+
+#include "cPose.h"
+
+    /* ========== cStructRigidInit ============*/
+
+cStructRigidInit::cStructRigidInit(cPoseCam * RigidMere,const ElRotation3D & aR) :
+  mCMere  (RigidMere),
+  mR0m1L0 (aR)
+{
+}
+
+
+static const int NbMinCreateIm = 200;
+
+//class cPtAVGR;
+//class cAperoVisuGlobRes;
+
+
+/***************** classes moved to cPose.h *******************/
+     /*===========     cPtAVGR  ===========*/
+
+
+
+cPtAVGR::cPtAVGR(const Pt3dr & aP,double aRes) :
+   mPt  (Pt3df::P3ToThisT(aP)),
+   mRes (aRes)
+{
+}
+
+/*class cFoncPtOfPtAVGR
+{
+   public :
+       Pt2dr operator () (cPtAVGR * aP) {return  Pt2dr(aP->mPt.x,aP->mPt.y);}
+};*/
+
+     /*===========     cAperoVisuGlobRes  ===========*/
+
+/*typedef enum
+{
+    eBAVGR_X,
+    eBAVGR_Y,
+    eBAVGR_Z,
+    eBAVGR_Res
+} eBoxAVGR;
+
+class cAperoVisuGlobRes
+{
+    public :
+       void AddResidu(const Pt3dr & aP,double aRes);
+       void DoResidu(const std::string & aDir,int aNbMes);
+
+       cAperoVisuGlobRes();
+       
+    private :
+       Interval  CalculBox(double & aVMil,double & aResol,eBoxAVGR aMode,double PropElim,double Rab);
+       Box2dr    CalculBox_XY(double PropElim,double Rab);
+       double    ToEcartStd(double anE) const;
+       double    FromEcartStd(double anE) const;
+       Pt3di     ColOfEcart(double anE);
+
+       typedef ElQT<cPtAVGR *,Pt2dr,cFoncPtOfPtAVGR> tQtTiepT;
+
+       int                  mNbPts;
+       std::list<cPtAVGR *> mLpt;
+       tQtTiepT *           mQt;
+       double               mResol;
+       double               mResolX;
+       double               mResolY;
+       double               mSigRes;
+       double               mMoyRes;
+       cPlyCloud            mPC;
+       cPlyCloud            mPCLeg;  // Legende
+       double               mVMilZ;
+};*/
+
+
+cAperoVisuGlobRes::cAperoVisuGlobRes() :
+   mNbPts  (0),
+   mQt     (0)
+{
+}
+
+
+
+void cAperoVisuGlobRes::AddResidu(const Pt3dr & aP,double aRes)
+{
+     cPtAVGR * aPVG = new cPtAVGR(aP,aRes);
+
+     mLpt.push_back(aPVG);
+     mNbPts++;
+}
+
+
+Interval cAperoVisuGlobRes::CalculBox(double & aVMil,double & aResol,eBoxAVGR aMode,double aPropElim,double aPropRab)
+{
+    std::vector<float> aVVals;
+    // double aSomV = 0;
+    // double aSomV2 = 0;
+
+    for (auto iT=mLpt.begin() ; iT!=mLpt.end() ; iT++)
+    {
+        double aVal = 0.0;
+        if       (aMode==eBAVGR_Res)     aVal = (*iT)->mRes  ;
+        else if  (aMode==eBAVGR_X)       aVal = (*iT)->mPt.x;
+        else if  (aMode==eBAVGR_Y)       aVal = (*iT)->mPt.y;
+        else if  (aMode==eBAVGR_Z)       aVal = (*iT)->mPt.z;
+        else
+        {
+                 aVal = (*iT)->mPt.z;
+                ELISE_ASSERT(false,"cAperoVisuGlobRes::CalculBox");
+        }
+        aVVals.push_back(aVal);
+        // aSomV += aVal;
+        // aSomV2 += ElSquare(aVal);
+    }
+    // aSomV /= mNbPts;
+    // aSomV2 /= mNbPts;
+    // aSomV2 -= ElSquare(aSomV);
+    // Sigma = Larg / srqt(12) pour une distrib uniforme
+    // double Larg =  sqrt(12*aSomV2);
+    double aV25 = KthValProp(aVVals,0.25);  
+    double aV75 = KthValProp(aVVals,0.75);
+    aVMil = (aV75+aV25) / 2.0;
+    double Larg = 2 * (aV75 - aV25);
+    aResol = Larg / mNbPts;
+
+    double aVMin = KthValProp(aVVals,aPropElim);  
+    double aVMax = KthValProp(aVVals,1-aPropElim);  
+
+    double aRab = (aVMax-aVMin) * aPropRab;
+
+    aVMin -= aRab ;
+    aVMax += aRab ;
+
+    return Interval(aVMin,aVMax);
+}
+
+Box2dr  cAperoVisuGlobRes::CalculBox_XY(double aPropElim,double aPropRab)
+{
+    double aVMilX,aVMilY;
+    Interval aIntX = CalculBox(aVMilX,mResolX,eBAVGR_X,aPropElim,aPropRab);
+    Interval aIntY = CalculBox(aVMilY,mResolY,eBAVGR_Y,aPropElim,aPropRab);
+
+    mResol = euclid(Pt2dr(mResolX,mResolY));
+
+    return Box2dr(Pt2dr(aIntX._v0,aIntY._v0), Pt2dr(aIntX._v1,aIntY._v1));
+}
+
+double DirErFonc(double x);
+double InvErrFonc(double x);
+
+double  cAperoVisuGlobRes::ToEcartStd(double anE) const
+{
+     return DirErFonc((anE-mMoyRes)/mSigRes); 
+}
+
+double  cAperoVisuGlobRes::FromEcartStd(double anE) const
+{
+     return mMoyRes + mSigRes *InvErrFonc(anE);
+}
+
+
+
+Pt3di     cAperoVisuGlobRes::ColOfEcart(double anE)
+{
+    Elise_colour aCol = Elise_colour::its(0.5,(1-anE)/3.0,1.0);
+
+    return Pt3di (AdjUC(aCol.r()*255),AdjUC(aCol.g()*255),AdjUC(aCol.b()*255));
+}
+
+template <class Type> bool gen_std_isnan(const Type & aP)
+{
+   return std_isnan(aP.x) || std_isnan(aP.y) ;
+}
+
+void cAperoVisuGlobRes::DoResidu(const std::string & aDir,int aNbMes)
+{
+    {
+       double aRR;
+       CalculBox(mVMilZ,aRR,eBAVGR_Z,0.16,0.0);
+    }
+
+    Box2dr aBoxQt = CalculBox_XY(0.02,0.3);
+    cFoncPtOfPtAVGR aFoncP;
+    
+    mQt = new tQtTiepT(aFoncP,aBoxQt,10,mResol*5);
+
+    for (auto iT=mLpt.begin() ; iT!=mLpt.end() ; iT++)
+    {
+        (*iT)->mInQt=   mQt->insert(*iT,true);
+    }
+
+    
+    for (auto iTGlob=mLpt.begin() ; iTGlob!=mLpt.end() ; iTGlob++)
+    {
+        if ((*iTGlob)->mInQt)
+        {
+           // std::set<cPtAVGR *> aSet;
+           Pt2dr aP = aFoncP(*iTGlob);
+           // std::list<cPtAVGR *> aLVois = mQt->KPPVois(aP,aNbMes,1.5*mResol*sqrt(aNbMes));
+           double aDist = mResol*sqrt(aNbMes);
+           std::set<cPtAVGR *> aLVois;  
+           mQt->RVoisins(aLVois,aP,mResol*sqrt(aNbMes));
+           double aSomP=0.0;
+           double aSomPRes=0.0;
+           for (auto itV=aLVois.begin() ; itV!=aLVois.end() ; itV++)
+           {
+               if (euclid((*iTGlob)->mPt-(*itV)->mPt) < aDist)
+               {
+                   double aPds = 1.0;
+                   aSomP += aPds;
+                   aSomPRes += aPds * (*itV)->mRes;
+               }
+           }
+           double aRes = aSomPRes / aSomP;
+           (*iTGlob)->mResFiltr = aRes;
+        }
+    }
+ 
+    double aRR; // Inutilise
+    // Pour une gaussienne 68 % compris dans [-Sig,Sig]
+    double aVMilRes;
+    Interval  aIntRes = CalculBox(aVMilRes,aRR,eBAVGR_Res,0.16,0.0);
+    mSigRes = (aIntRes._v1 - aIntRes._v0) / 2.0;
+    mMoyRes = (aIntRes._v1 + aIntRes._v0) / 2.0;
+
+    for (auto iTGlob=mLpt.begin() ; iTGlob!=mLpt.end() ; iTGlob++)
+    {
+        if ((*iTGlob)->mInQt)
+        {
+             double anEcart = ToEcartStd( (*iTGlob)->mResFiltr);
+             Pt3di aCol = ColOfEcart(anEcart);
+             mPC.AddPt(aCol,Pt3dr::P3ToThisT((*iTGlob)->mPt));
+        }
+    }
+
+    mPC.PutFile(aDir+"CloudResidual.ply");
+
+    Pt2dr aP0 = aBoxQt._p0 - Pt2dr(0,-40) * mResol;
+
+    double aPasLeg = mResol *100;
+
+    double aZLeg = mVMilZ;
+    int aNbLeg = 10;
+    double aLargX = 10;
+    int    aLargY = 20;
+    for (int aCpt=0 ; aCpt<=aNbLeg; aCpt++)
+    {
+        double aEcartStd =  (aCpt-aNbLeg*0.5) /(0.5+aNbLeg*0.5);
+        double aRes = FromEcartStd(aEcartStd);
+        if (aRes >0)
+        {
+           char aBuf[100];
+           sprintf(aBuf,"%.2f",aRes);
+           std::string aStrRes (aBuf);
+           
+           mPCLeg.PutString
+           (
+                aStrRes,
+                Pt3dr(aP0.x,aP0.y,aZLeg)+Pt3dr(0,aCpt*aPasLeg*aLargY,0) , 
+                Pt3dr(1,0,0),
+                Pt3dr(0,1,0),
+                Pt3di(255,255,255),
+                aLargX* aPasLeg,  //  La largeur des caractere
+                aPasLeg,  // espacement
+                4  // carre de 4x4
+            );
+
+
+        }
+    }
+
+    int DensLeg = 20;
+    for (int aCpt= -DensLeg/2 ; aCpt<=((DensLeg*aNbLeg) + DensLeg/2) ; aCpt++)
+    {
+        double aCptN  =  aCpt/double(DensLeg);
+        double aEcartStd =  (aCptN-aNbLeg*0.5) /(0.5+aNbLeg*0.5);
+        Pt3di aCol = ColOfEcart(aEcartStd);
+
+        
+        Pt3dr aPLine  = Pt3dr(aP0.x,aP0.y,aZLeg)+Pt3dr(0,aCptN*aPasLeg*aLargY,0) ; 
+
+        for (int anX=0 ; anX<=DensLeg ; anX++)
+        {
+            Pt3dr aP = aPLine + Pt3dr(-(anX/double(DensLeg))*aPasLeg*aLargY,0,0);
+            mPCLeg.AddPt(aCol,aP);
+        }
+    }
+    mPCLeg.PutFile(aDir+"CloudResidual_Leg.ply");
+
+
+/*
+    for (int aK=-10 ; aK<10 ; aK++)
+    {
+        double aV= aK*0.2;
+        std::cout << "EErr " << aV << " " << erfcc(aV) << " " <<DirErFonc(aV) <<  " Dif=" <<  InvErrFonc(DirErFonc(aV)) - aV << "\n";
+    }
+    getchar();
+*/
+}
+
+
+static cAperoVisuGlobRes mAVGR;
+
+
+//============================================
+
+/*class cInfoAccumRes
+{
+     public :
+       cInfoAccumRes(const Pt2dr & aPt,double aPds,double aResidu,const Pt2dr & aDir);
+
+       Pt2dr  mPt;
+       double mPds;
+       double mResidu;
+       Pt2dr  mDir;
+};*/
+
+
+cInfoAccumRes::cInfoAccumRes(const Pt2dr & aPt,double aPds,double aResidu,const Pt2dr & aDir) :
+   mPt      (aPt),
+   mPds     (aPds),
+   mResidu  (aResidu),
+   mDir     (aDir)
+{
+}
+
+/*class cAccumResidu
+{
+    public :
+       void Accum(const cInfoAccumRes &);
+       cAccumResidu(Pt2di aSz,double aRed,bool OnlySign,int aDegPol);
+
+       const Pt2di & SzRed() {return mSzRed;}
+
+       void Export(const std::string & aDir,const std::string & aName,const cUseExportImageResidu &,FILE * );
+       void ExportResXY(TIm2D<REAL4,REAL8>* aTResX,TIm2D<REAL4,REAL8>* aTResY);
+       void ExportResXY(const Pt2di&,Pt2dr& aRes);
+    private :
+       void AccumInImage(const cInfoAccumRes &);
+
+       std::list<cInfoAccumRes> mLIAR;
+       int                      mNbInfo;
+       double                   mSomPds;
+       bool                     mOnlySign;
+       double                   mResol;
+       Pt2di                    mSz;
+       Pt2di                    mSzRed;
+
+       Im2D_REAL4               mPds;
+       TIm2D<REAL4,REAL8>       mTPds;
+       Im2D_REAL4               mMoySign;
+       TIm2D<REAL4,REAL8>       mTMoySign;
+       Im2D_REAL4               mMoyAbs;
+       TIm2D<REAL4,REAL8>       mTMoyAbs;
+       bool                     mInit;
+       int                      mDegPol;
+       L2SysSurResol *          mSys;
+};*/
+
+cAccumResidu::cAccumResidu(Pt2di aSz,double aResol,bool OnlySign,int aDegPol) :
+   mNbInfo (0),
+   mSomPds   (0.0),
+   mOnlySign (OnlySign),
+   mResol    (aResol),
+   mSz       (aSz),
+   mSzRed    (round_up(Pt2dr(aSz)/mResol)),
+   mPds      (1,1),
+   mTPds     (mPds),
+   mMoySign  (1,1),
+   mTMoySign (mMoySign),
+   mMoyAbs   (1,1),
+   mTMoyAbs  (mMoyAbs),
+   mInit     (false),
+   mDegPol   (aDegPol),
+   mSys      (0)
+{
+}
+
+void cAccumResidu::Export(const std::string & aDir,const std::string & aName,const cUseExportImageResidu & aUEIR,FILE * aFP ) 
+{
+   if (! mInit) return;
+
+   fprintf(aFP,"=== %s =======\n",aName.c_str());
+   fprintf(aFP,"  Nb=%d  WAver=%f\n",mNbInfo,mSomPds/mNbInfo);
+
+   Tiff_Im::CreateFromFonc
+   (
+        aDir+"RawWeight-"+aName+".tif",
+        mSzRed,
+        mPds.in() * (mNbInfo/mSomPds),
+        GenIm::real4
+   );
+
+   int aNbPixel = mSzRed.x * mSzRed.y;
+   double aNbMesByCase = mNbInfo / double(aNbPixel);
+   double aTargetNbMesByC = aUEIR.NbMesByCase().Val();
+   if (aTargetNbMesByC >= 0)
+   {
+        double aSigma = sqrt(aTargetNbMesByC / aNbMesByCase);
+        FilterGauss(mPds,aSigma);
+        FilterGauss(mMoySign,aSigma);
+        FilterGauss(mMoyAbs,aSigma);
+   }
+
+   Tiff_Im::CreateFromFonc
+   (
+        aDir+"ResSign-"+aName+".tif",
+        mSzRed,
+        mMoySign.in() / Max(mPds.in(),1e-4),
+        GenIm::real4
+   );
+
+   double aMoySign,aMoyAbsSign,aSomPds;
+   ELISE_COPY
+   (
+        mPds.all_pts(),
+        Virgule(mPds.in(),mMoySign.in(),Abs(mMoySign.in())),
+        Virgule(sigma(aSomPds),sigma(aMoySign),sigma(aMoyAbsSign))
+   );
+   fprintf(aFP,"  AverSign=%f  AverAbsSign=%f\n",aMoySign/aSomPds,aMoyAbsSign/aSomPds);
+
+   if (!mOnlySign)
+   {
+      Tiff_Im::CreateFromFonc
+      (
+           aDir+"ResAbs-"+aName+".tif",
+           mSzRed,
+           mMoyAbs.in() / Max(mPds.in(),1e-4),
+           GenIm::real4
+      );
+   }
+
+    if (mSys)
+    {
+        bool aOk;
+        Im1D_REAL8  aSol = mSys->Solve(&aOk);
+        if (aOk)
+        {
+            double * aDS = aSol.data();
+
+            Im2D_REAL4               aResX(mSzRed.x,mSzRed.y);
+            TIm2D<REAL4,REAL8>       aTRx(aResX);
+            Im2D_REAL4               aResY(mSzRed.x,mSzRed.y);
+            TIm2D<REAL4,REAL8>       aTRy(aResY);
+
+            Pt2di aPInd;
+            for (aPInd.x=0 ; aPInd.x<mSzRed.x ; aPInd.x++)
+            {
+                for (aPInd.y=0 ; aPInd.y<mSzRed.y ; aPInd.y++)
+                {
+                    Pt2dr aPFulRes = Pt2dr(aPInd) * mResol;
+                    Pt2dr aSzN = mSz/2.0;
+                    double  aX = (aPFulRes.x-aSzN.x) / aSzN.x;
+                    double  aY = (aPFulRes.y-aSzN.y) / aSzN.y;
+
+                    std::vector<double> aVMx; // Monome Xn
+                    std::vector<double> aVMy; // Monome Yn
+                    aVMx.push_back(1.0);
+                    aVMy.push_back(1.0);
+                    for (int aD=0 ; aD< mDegPol ; aD++)
+                    {
+                      aVMx.push_back(aVMx.back() * aX);
+                      aVMy.push_back(aVMy.back() * aY);
+                    }
+
+
+                    int anIndEq = 0;
+                    double aSX=0 ;
+                    double aSY=0 ;
+                    for (int aDx=0 ; aDx<= mDegPol ; aDx++)
+                    {
+                       for (int aDy=0 ; aDy<= mDegPol - aDx ; aDy++)
+                       {
+                            double aMonXY = aVMx[aDx] * aVMy[aDy]; // X ^ Dx * Y ^ Dy
+                            aSX += aDS[anIndEq++] * aMonXY;
+                            aSY += aDS[anIndEq++] * aMonXY;
+                       }
+                    }
+                    aTRx.oset(aPInd,aSX);
+                    aTRy.oset(aPInd,aSY);
+                }
+            }
+            Tiff_Im::CreateFromFonc
+            (
+                 aDir+"ResX-"+aName+".tif",
+                 mSzRed,
+                 aResX.in(),
+                 GenIm::real4
+            );
+            Tiff_Im::CreateFromFonc
+            (
+                 aDir+"ResY-"+aName+".tif",
+                 mSzRed,
+                 aResY.in(),
+                 GenIm::real4
+            );
+        }
+    }
+}
+
+void cAccumResidu::ExportResXY(const Pt2di& aPt,Pt2dr& aRes)
+{
+    if (mSys)
+    {
+        bool aOk;
+        Im1D_REAL8  aSol = mSys->Solve(&aOk);
+        if (aOk)
+        {
+            double * aDS = aSol.data();
+
+            std::vector<double> aVMx;
+            std::vector<double> aVMy;
+            aVMx.push_back(1.0);
+            aVMy.push_back(1.0);
+
+            Pt2dr aPFulRes = Pt2dr(aPt) * mResol;
+            Pt2dr aSzN = mSz/2.0;
+            double  aX = (aPFulRes.x-aSzN.x) / aSzN.x;
+            double  aY = (aPFulRes.y-aSzN.y) / aSzN.y;
+
+            for (int aD=0 ; aD< mDegPol ; aD++)
+            {
+              aVMx.push_back(aVMx.back() * aX);
+              aVMy.push_back(aVMy.back() * aY);
+            }
+
+            int anIndEq = 0;
+            double aSX=0 ;
+            double aSY=0 ;
+            for (int aDx=0 ; aDx<= mDegPol ; aDx++)
+            {
+               for (int aDy=0 ; aDy<= mDegPol - aDx ; aDy++)
+               {
+                    double aMonXY = aVMx[aDx] * aVMy[aDy];
+                    aSX += aDS[anIndEq++] * aMonXY;
+                    aSY += aDS[anIndEq++] * aMonXY;
+               }
+            }
+
+            aRes.x = aSX;
+            aRes.y = aSY;
+        }
+    }
+}
+
+
+void cAccumResidu::ExportResXY(TIm2D<REAL4,REAL8>* aTRx,TIm2D<REAL4,REAL8>* aTRy)
+{
+    if (mSys)
+    {
+        bool aOk;
+        Im1D_REAL8  aSol = mSys->Solve(&aOk);
+        if (aOk)
+        {
+            double * aDS = aSol.data();
+
+            Pt2di aPInd;
+            for (aPInd.x=0 ; aPInd.x<mSzRed.x ; aPInd.x++)
+            {
+                for (aPInd.y=0 ; aPInd.y<mSzRed.y ; aPInd.y++)
+                {
+                    Pt2dr aPFulRes = Pt2dr(aPInd) * mResol;
+                    Pt2dr aSzN = mSz/2.0;
+                    double  aX = (aPFulRes.x-aSzN.x) / aSzN.x;
+                    double  aY = (aPFulRes.y-aSzN.y) / aSzN.y;
+
+                    std::vector<double> aVMx; 
+                    std::vector<double> aVMy;  
+                    aVMx.push_back(1.0);
+                    aVMy.push_back(1.0);
+                    for (int aD=0 ; aD< mDegPol ; aD++)
+                    {
+                      aVMx.push_back(aVMx.back() * aX);
+                      aVMy.push_back(aVMy.back() * aY);
+                    }
+
+
+                    int anIndEq = 0;
+                    double aSX=0 ;
+                    double aSY=0 ;
+                    for (int aDx=0 ; aDx<= mDegPol ; aDx++)
+                    {
+                       for (int aDy=0 ; aDy<= mDegPol - aDx ; aDy++)
+                       {
+                            double aMonXY = aVMx[aDx] * aVMy[aDy]; 
+                            aSX += aDS[anIndEq++] * aMonXY;
+                            aSY += aDS[anIndEq++] * aMonXY;
+                       }
+                    }
+                    aTRx->oset(aPInd,aSX);
+                    aTRy->oset(aPInd,aSY);
+                }
+            }
+        }
+    }
+}
+
+
+void cAccumResidu::AccumInImage(const cInfoAccumRes & anInfo)
+{
+    Pt2dr aP = anInfo.mPt / mResol;
+    mTPds.incr(aP,anInfo.mPds);
+    mTMoySign.incr(aP,anInfo.mPds * anInfo.mResidu);
+
+    if (!mOnlySign)
+    {
+         mTMoyAbs.incr(aP,anInfo.mPds*ElAbs(anInfo.mResidu));
+    }
+    if (mSys)
+    {
+        // 
+        Pt2dr aSzN = mSz/2.0;
+        Pt2dr aN = anInfo.mDir * Pt2dr(0,1);
+        // Pour precision matrice, mieux vaut coordonnees normalisees
+        double  aX = (anInfo.mPt.x-aSzN.x) / aSzN.x;
+        double  aY = (anInfo.mPt.y-aSzN.y) / aSzN.y;
+
+        std::vector<double> aVMx; // Monome Xn
+        std::vector<double> aVMy; // Monome Xn
+        aVMx.push_back(1.0);
+        aVMy.push_back(1.0);
+        for (int aD=0 ; aD< mDegPol ; aD++)
+        {
+          aVMx.push_back(aVMx.back() * aX);
+          aVMy.push_back(aVMy.back() * aY);
+        }
+
+        std::vector<double> anEq;
+
+        for (int aDx=0 ; aDx<= mDegPol ; aDx++)
+        {
+           for (int aDy=0 ; aDy<= mDegPol - aDx ; aDy++)
+           {
+                double aMonXY = aVMx[aDx] * aVMy[aDy]; // X ^ Dx * Y ^ Dy
+                anEq.push_back(aMonXY* aN.x);
+                anEq.push_back(aMonXY* aN.y);
+
+//    std::cout << " eq " << aDx << " " << aDx << " " << aVMx[aDx] << " " << aVMy[aDy] << " " << aN.x << " " << aN.y << " " << anInfo.mDir <<"\n";
+  //  std::cout << " eq " << aMonXY* aN.x << " " << aMonXY* aN.y << "\n";
+           }
+        }
+        mSys->AddEquation(anInfo.mPds,VData(anEq),anInfo.mResidu);
+    }
+}
+void cAccumResidu::Accum(const cInfoAccumRes & anInfo)
+{
+   mSomPds += anInfo.mPds;
+   mNbInfo++;
+   if (mNbInfo<NbMinCreateIm)
+   {
+      mLIAR.push_back(anInfo);
+   }
+   else if (mNbInfo==NbMinCreateIm)
+   {
+       mInit = true;
+       mLIAR.push_back(anInfo);
+       mPds = Im2D_REAL4(mSzRed.x,mSzRed.y,0.0);
+       mTPds =  TIm2D<REAL4,REAL8>(mPds);
+       mMoySign = Im2D_REAL4(mSzRed.x,mSzRed.y,0.0);
+       mTMoySign =  TIm2D<REAL4,REAL8>(mMoySign);
+       if (! mOnlySign)
+       {
+           mMoyAbs = Im2D_REAL4(mSzRed.x,mSzRed.y,0.0);
+           mTMoyAbs =  TIm2D<REAL4,REAL8>(mMoyAbs);
+       }
+       if (mDegPol >=0)
+       {
+          mSys =  new L2SysSurResol((1+mDegPol)*(mDegPol+2));
+       }
+       for (std::list<cInfoAccumRes>::const_iterator itI=mLIAR.begin() ;itI!=mLIAR.end() ; itI++)
+       {
+           AccumInImage(*itI);
+       }
+       mLIAR.clear();
+   }
+   else
+   {
+        AccumInImage(anInfo);
+   }
+}
+
+       // cAccumResidu(Pt2di aSz,double aRed,bool OnlySign);
+void cAppliApero::AddOneInfoImageResidu
+     (
+         const cInfoAccumRes & anInfo,
+         const std::string &   aName,
+         Pt2di                 aSz,
+         double                aSzRed,
+         bool                  OnlySign,
+         int                   aDegPol
+     )
+{
+
+  if (aSzRed <=0) return;
+
+  double aFactRed = dist8(aSz) / aSzRed;
+
+  cAccumResidu * & aRef = mMapAR[aName];
+  if (aRef==0)
+  {
+     aRef = new cAccumResidu(aSz,aFactRed,OnlySign,aDegPol);
+  }
+
+  aRef->Accum(anInfo);
+}
+
+void cAppliApero::AddInfoImageResidu
+     (
+         const Pt3dr &                 aPt,
+         const  cNupletPtsHomologues & aNupl,
+         const std::vector<cGenPoseCam *> aVP,
+         const std::vector<double> &  aVpds
+     )
+{
+  if ((!Param().UseExportImageResidu().IsInit()) || (! IsLastEtapeOfLastIter()))
+     return;
+
+  const cUseExportImageResidu & aUEIR = Param().UseExportImageResidu().Val();
+
+
+  double aSomPds     = 0.0;
+  double aSomPdsRes  = 0.0;
+
+  for (int aK1=0 ; aK1< aNupl.NbPts() ; aK1++)
+  {
+      double aPds1 = aVpds[aK1];
+      if (aPds1>0)
+      {
+         for (int aK2=0 ; aK2< aNupl.NbPts() ; aK2++)
+         {
+             double aPds2 = aVpds[aK2];
+             if ((aK1!=aK2) && (aPds2>0))
+             {
+                const cBasicGeomCap3D * aCam1 = aVP[aK1]->GenCurCam();
+                const cBasicGeomCap3D * aCam2 = aVP[aK2]->GenCurCam();
+                Pt2di aSzCam1 = aCam1->SzBasicCapt3D();
+                Pt2dr aP1 = aNupl.PK(aK1);
+                Pt2dr aP2 = aNupl.PK(aK2);
+                   
+                Pt2dr aDir;
+                double aRes = aCam1->EpipolarEcart(aP1,*aCam2,aP2,&aDir);
+                cInfoAccumRes anInfo(aP1,ElMin(aPds1,aPds2),aRes,aDir);
+
+                double aPds = aPds1 * aPds2;
+                aSomPds    += aPds;
+                aSomPdsRes += aPds * ElAbs(aRes);
+
+                if (aK1<aK2)
+                {
+                    std::string aNamePair = "Pair-"+aVP[aK1]->Name() + "-" + aVP[aK2]->Name();
+                    AddOneInfoImageResidu(anInfo,aNamePair,aSzCam1,aUEIR.SzByPair().Val(),true,-1);
+                }
+                AddOneInfoImageResidu(anInfo,"Pose-"+aVP[aK1]->Name(),aSzCam1,aUEIR.SzByPose().Val(),false,5);
+
+                cCalibCam *  aCC1 = aVP[aK1]->CalibCam();
+                if (aCC1)
+                {
+                   AddOneInfoImageResidu(anInfo,"Cam-"+aCC1->KeyId(),aSzCam1,aUEIR.SzByCam().Val(),false,10);
+                }
+             }
+         }
+      }
+  }
+
+  if (aSomPds)
+  {
+       mAVGR.AddResidu(aPt,aSomPdsRes/aSomPds);
+  }
+}
+
+void cAppliApero::ExportImageResidu(const std::string & aName,const cAccumResidu & anAccum) 
+{
+    const cUseExportImageResidu & aUEIR = Param().UseExportImageResidu().Val();
+    // ELISE_fp::MkDirRec(mDirExportImRes);
+
+    const_cast<cAccumResidu &>(anAccum).Export(mDirExportImRes,aName,aUEIR,mFileExpImRes);
+}
+
+void cAppliApero::ExportImageResidu() 
+{
+  if ((!Param().UseExportImageResidu().IsInit()) )
+     return;
+
+  const cUseExportImageResidu & aUEIR = Param().UseExportImageResidu().Val();
+  mDirExportImRes =  DC() + "Ori" + aUEIR.AeroExport() + "/ImResidu/";
+  ELISE_fp::MkDirRec(mDirExportImRes);
+
+  mFileExpImRes = FopenNN(mDirExportImRes+"StatRes.txt","w","cAppliApero::ExportImageResidu");
+
+  for (auto it=mMapAR.begin() ; it!=mMapAR.end() ; it++)
+  {
+       ExportImageResidu(it->first,*(it->second));
+  }
+  fclose(mFileExpImRes);
+
+   mAVGR.DoResidu(mDirExportImRes,aUEIR.NbMesByCase().Val());
+
+}
+
+//============================================
 
 
 int PROF_UNDEF() { return -1; }
@@ -53,6 +859,48 @@ void cPoseCam::SetNameCalib(const std::string & aNameC)
 
 static int theNumCreate =0;
 
+
+cStructRigidInit * cPoseCam::GetSRI(bool SVP) const 
+{
+   if (!SVP && (mSRI==0))
+   {
+       ELISE_ASSERT(false,"NO SRI");
+   }
+   return mSRI;
+}
+void  cPoseCam::SetSRI(cStructRigidInit * aSRI) 
+{
+    ELISE_ASSERT(mSRI==0,"Muliple SRI set");
+    mSRI = aSRI;
+}
+
+cPreCompBloc * cPoseCam::GetPreCompBloc(bool SVP) const 
+{
+   if (!SVP && (mBlocCam==0))
+   {
+       ELISE_ASSERT(false,"NO Boc Cam");
+   }
+   return mBlocCam;
+}
+void  cPoseCam::SetPreCompBloc(cPreCompBloc * aBloc) 
+{
+    ELISE_ASSERT(mBlocCam==0,"Muliple Bloc set");
+    mBlocCam = aBloc;
+}
+
+cPreCB1Pose * cPoseCam::GetPreCB1Pose(bool SVP) const 
+{
+   if (!SVP && (mPoseInBlocCam==0))
+   {
+       ELISE_ASSERT(false,"NO Pose in Boc Cam");
+   }
+   return mPoseInBlocCam;
+}
+void  cPoseCam::SetPreCB1Pose(cPreCB1Pose * aPoseInBloc) 
+{
+    ELISE_ASSERT(mPoseInBlocCam==0,"Muliple Bloc set");
+    mPoseInBlocCam = aPoseInBloc;
+}
 
 
 void cPoseCam::SetOrInt(const cTplValGesInit<cSetOrientationInterne> & aTplSI)
@@ -147,7 +995,13 @@ cPoseCam::cPoseCam
     mNbPosOfInit  (-1),
     mFidExist     (false),
     mCamNonOrtho         (0),
-    mEqOffsetGPS         (0)
+    mEqOffsetGPS         (0),
+    mSRI                 (nullptr),
+    mBlocCam             (nullptr),
+    mNumTimeBloc         (-1),
+    mPoseInBlocCam       (nullptr),
+    mUseRappelPose       (false),
+    mRotURP              (ElRotation3D::Id)
 {
     mPrec = this;
     mNext = this;
@@ -246,6 +1100,17 @@ bool cPoseCam::FidExist() const
    return mFidExist;
 }
 
+
+void cPoseCam::SetNumTimeBloc(int aNum)
+{
+   mNumTimeBloc = aNum;
+}
+
+int cPoseCam::DifBlocInf1(const cPoseCam & aPC) const
+{
+   if ((mNumTimeBloc==-1) || (aPC.mNumTimeBloc==-1)) return 1000;
+   return ElAbs(mNumTimeBloc-aPC.mNumTimeBloc);
+}
 
 
 
@@ -351,6 +1216,8 @@ void cPoseCam::Set0Prof2Init()
 {
     mProf2Init = 0;
 }
+
+bool cPoseCam::ProfIsInit() const {return mProf2Init != TheDefProf2Init ;}
 
 
 double cPoseCam::Time() const
@@ -672,15 +1539,19 @@ void  cPoseCam::AddLink(cPoseCam * aPC)
 
 
 
-void cPoseCam::SetCurRot(const ElRotation3D & aRot)
+void cPoseCam::PCSetCurRot(const ElRotation3D & aRot)
 {
+    ELISE_ASSERT(!mUseRappelPose,"Internam Error, probaly bascule + UseRappelPose");
+
+
     AssertHasNotCamNonOrtho();
-    mCF->SetCurRot(aRot);
+    mCF->SetCurRot(aRot,aRot);
 }
 
 
 void  cPoseCam::SetBascRig(const cSolBasculeRig & aSBR)
 {
+    PCSetCurRot(aSBR.TransformOriC2M(CurRot()));
 
     Pt3dr aP;
     if (mSomPM)
@@ -691,13 +1562,17 @@ void  cPoseCam::SetBascRig(const cSolBasculeRig & aSBR)
     else
     {
         const CamStenope *  aCS = CurCam() ;
-        ELISE_ASSERT( (mProfondeur != PROF_UNDEF()),"No Profondeur in cPoseCam::SetBascRig");
+        if (mProfondeur == PROF_UNDEF())
+        {
+            std::cout << "Warn : NoProfInBasc For camera =" << mName << "\n";
+            // ELISE_ASSERT( false,"No Profondeur in cPoseCam::SetBascRig");
+            return ;
+        }
 
         aP =  aCS->ImEtProf2Terrain(aCS->Sz()/2.0,mProfondeur);
         aP =  aSBR(aP);
     }
 
-    SetCurRot(aSBR.TransformOriC2M(CurRot()));
 
 
     const CamStenope *  aCS = CurCam() ;
@@ -718,6 +1593,7 @@ void cPoseCam::VirtualAddPMoy
 {
   if (mAppli.UsePdsCalib())
       mCalib->AddPds(aPIm,(*aVPds)[aKPoseThis]);
+
 }
 
 
@@ -815,13 +1691,20 @@ bool cPoseCam::IsId(const ElAffin2D & anAff) const
 /*
 */
 
+double DistanceMatr(const ElRotation3D & aR1,const ElRotation3D & aR2)
+{
+   ElMatrix<double> aMatr = aR1.inv().Mat() * aR2.Mat(); 
+   ElMatrix<double> aId(3,true);
 
-class cTransfo3DIdent : public cTransfo3D
+   return aId.L2(aMatr);
+}
+
+/*class cTransfo3DIdent : public cTransfo3D
 {
      public :
           std::vector<Pt3dr> Src2Cibl(const std::vector<Pt3dr> & aSrc) const {return aSrc;}
 
-};
+};*/
 
 
 extern bool DebugOFPA;
@@ -858,12 +1741,13 @@ else
       if (mAppli.HasObsCentre(mPCI->IdBDCentre().Val(),mName))
       {
           mObsCentre = *( mAppli.ObsCentre(mPCI->IdBDCentre().Val(),mName).mVals );
-          mHasObsOnCentre = (mObsCentre.mIncOnC.x>0) && (mObsCentre.mIncOnC.y>0) && (mObsCentre.mIncOnC.z>0);
+          mHasObsOnCentre = mObsCentre.mHasObsC;
           mHasObsOnVitesse = mHasObsOnCentre && mObsCentre.mVitFiable && mObsCentre.mVitesse.IsInit();
 
 //   std::cout << "NameBDDCCC " << mName << " HasC " << mHasObsOnCentre << "\n";
       }
    }
+
   
     // std::cout << mName << "::Prof=" << mProf2Init << "\n";
 // std::cout <<  "Init Pose " << aNamePose << "\n";
@@ -899,9 +1783,21 @@ else
     bool isForISec =  mAppli.Param().IsChoixImSec().Val();
     bool initFromBD = false;
 
-    if (mPCI->PosId().IsInit())
+
+    if  (mSRI)
+    {
+        ElRotation3D aR1 = mSRI->mCMere->CurRot()  ;  // R1 to M
+        ElRotation3D aL1Bis = aR1 * mSRI->mR0m1L0;
+        aRot = aL1Bis;
+    }
+    else if (mPCI->PosId().IsInit())
     {
          aRot =  ElRotation3D(Pt3dr(0,0,0),0,0,-PI);
+    }
+    else if (mPCI->PosFromBlockRigid().IsInit())
+    {
+         mAppli.PreInitBloc(mPCI->PosFromBlockRigid().Val());
+         aRot = GetPreCB1Pose(false)->mRot;
     }
     else if(mPCI->PosFromBDOrient().IsInit())
     {
@@ -1327,6 +2223,71 @@ std::cout << "TEST MEPS STD " << mName  << " L2 " << L2
        ELISE_ASSERT(false,"cPoseCam::Alloc");
     }
 
+{
+if  (mSRI && MPD_MM())
+{
+#if (0)
+   ElRotation3D aR1 = mSRI->mCMere->CurRot()  ;  // R1 to M
+   ElRotation3D aL1Bis = aR1 * mSRI->mR0m1L0;
+   aRot = aL1Bis;
+
+
+   std::string aNameOri = "MPD-CmpPolygBlinis";
+   CamStenope *  aCamR1 = mAppli.ICNM()->StdCamStenOfNames(mSRI->mCMere->Name(),aNameOri);
+   CamStenope *  aCamL1 = mAppli.ICNM()->StdCamStenOfNames(Name(),aNameOri);
+
+   ElRotation3D aRefRotL1 = aCamL1->Orient().inv();
+   ElRotation3D aRefRotR1 = aCamR1->Orient().inv();
+
+/*
+   ElRotation3D aL1Bis =  aRotR1  * mSRI->mR0m1L0;
+
+   ElRotation3D aDif = aRotL1 * aL1Bis.inv();
+   ElMatrix<double> anId(3,true);
+   if (anId.L2(aDif.Mat()) > -1)
+   {
+       std::cout  << "NAME= " << mName << " " <<  euclid(aRotL1.tr()-aL1Bis.tr()) <<  " " << anId.L2(aDif.Mat()) << "\n";
+       getchar();
+   }
+*/
+   
+
+   ElRotation3D aL1 = aRot;
+   ElRotation3D aR1 = mSRI->mCMere->CurRot()  ;  // R1 to M
+   ElRotation3D aL1Bis = aR1 * mSRI->mR0m1L0;
+
+   ElRotation3D aPassL1 =  aL1 *  aRefRotL1.inv() ; //                L1 to M
+   ElRotation3D aPassR1 =  aR1 * aRefRotR1.inv()  ; //                L1 to M
+
+   static ElRotation3D FirsrtPass = aPassR1;
+   
+   // ElRotation3D aDif = aL1.inv() * aRot;
+   ElMatrix<double> anId(3,true);
+   ElRotation3D aDif = aL1 * aL1Bis.inv();
+   if (1) // anId.L2(aDif.Mat()) > 0.01)
+   {
+       std::cout  << "NAME= " << mName  << " " << mRotIsInit  
+                 << " mere: " << mSRI->mCMere->mName << " " <<  mSRI->mCMere->mRotIsInit << "\n";
+
+       std::cout << " TR:" <<  euclid(aL1.tr()-aL1Bis.tr()) 
+                  <<  " MAT:" << anId.L2(aDif.Mat()) 
+                  <<  " PassRL " << DistanceMatr(aPassL1,aPassR1)
+                  <<  " PassFirst-R " << DistanceMatr(FirsrtPass,aPassR1)
+                  <<  " PassFirst-L " << DistanceMatr(FirsrtPass,aPassL1)
+                  << "\n";
+               
+
+       // getchar();
+   }
+   aRot = aL1Bis;
+/*
+   else
+      aRot = aL1;
+*/
+#endif
+}
+}
+
 
 //GUIMBAL
 
@@ -1345,7 +2306,6 @@ std::cout << "TEST MEPS STD " << mName  << " L2 " << L2
         ElCamera::ChangeSys(aVCam,aTransfo,true,true);
 
         ElRotation3D aRMod = aCS->Orient();
-        // mCF->SetCurRot(aRMod.inv());
         aRot = aRMod.inv();
 
 // ShowMatr("Entree",aRot.Mat());
@@ -1354,19 +2314,27 @@ std::cout << "TEST MEPS STD " << mName  << " L2 " << L2
     }
 
 
+    mRotURP = aRot;
+    mUseRappelPose = mAppli.PtrRP()  &&  mAppli.PtrRP()->PatternApply()->Match(mName);
+    if (mUseRappelPose)
+    {
+        CamStenope * aCS = mAppli.ICNM()->StdCamStenOfNames(mName,mAppli.PtrRP()->IdOrient());
+        mRotURP = aCS->Orient().inv();
+    }
+
     double aLMG = mAppli.Param().LimModeGL().Val();
     double aGVal = GuimbalAnalyse(aRot,false);
-    if ((aLMG>0) && (aGVal<aLMG))
+    if (((aLMG>0) && (aGVal<aLMG)) || mUseRappelPose)
     {
        std::cout << "GUIMBAL-INIT " << mName << " " << aGVal<< "\n";
-       mCF->SetGL(true);
+       mCF->SetGL(true,mRotURP);
     }
     else
     {
        std::cout << "NO GUIMBAL " << mName  << " " << aGVal<< "\n";
     }
 
-    mCF->SetCurRot(aRot);
+    mCF->SetCurRot(aRot,mRotURP);
 
 
 
@@ -1420,6 +2388,21 @@ std::cout << "TEST MEPS STD " << mName  << " L2 " << L2
              mAppli.CheckInit(theLiasInit,this);
     }
 }
+
+
+void cPoseCam::UseRappelOnPose() const 
+{
+   if (! mUseRappelPose) return;
+
+   double aPdsC  = 1/ElSquare(mAppli.PtrRP()->SigmaC());
+   Pt3dr aPtPdsC(aPdsC,aPdsC,aPdsC);
+   double aPdsR  = 1/ElSquare(mAppli.PtrRP()->SigmaR());
+   Pt3dr aPtPdsR (aPdsR,aPdsR,aPdsR);
+   mRF->AddRappOnRot(mRotURP,aPtPdsC,aPtPdsR);
+
+   // std::cout << "NAME RAPPELE ON POSE =" << mName << "\n";
+}
+
 
 void cPoseCam::AffineRot()
 {
@@ -1783,6 +2766,9 @@ Pt3dr  cPoseCam::AddObsCentre
            cStatObs & aSO
       )
 {
+// cObsCentre aRes;
+// mIncOnC 
+
 
    mLastItereHasUsedObsOnCentre = true;
    ELISE_ASSERT(DoAddObsCentre(anObs),"cPoseCam::AddObsCentre");
@@ -1790,10 +2776,37 @@ Pt3dr  cPoseCam::AddObsCentre
    if (mEqOffsetGPS)
    {
        Pt3dr aResidu = mEqOffsetGPS->Residu(mObsCentre.mCentre);
-       std::cout << "Lever Arm, Cam: " << mName << " Residual " << aResidu  << " LA: " <<  mEqOffsetGPS->Base()->ValueBase() << "\n";
-       double aPdsP  = aPondPlani.PdsOfError(euclid(Pt2dr(aResidu.x,aResidu.y))/sqrt(2.));
+       double aNormLA = euclid(mEqOffsetGPS->Base()->ValueBase());
+       std::cout << "Lever Arm, Cam: " << mName << " Residual " << aResidu  << " LA: " <<  mEqOffsetGPS->Base()->ValueBase() << ", " << aNormLA << "\n";
+
+       double aPdsPX = aPondPlani.PdsOfError(euclid(Pt2dr(aResidu.x,aResidu.y))/sqrt(2.));
+       double aPdsPY = aPdsPX;
        double aPdsZ  = aPondAlti.PdsOfError(ElAbs(aResidu.z));
-       return mEqOffsetGPS->AddObs(mObsCentre.mCentre,Pt3dr(aPdsP,aPdsP,aPdsZ));
+//std::cout << " cPoseCam::AddObsCentre " << mObsCentre.mIncOnC  << " " <<  aPdsP << " " << aPdsZ  <<  "\n";
+       Pt3dr aPInc = mObsCentre.mIncertOnC;
+       // Si il y a une incertitude
+       if (aPInc.x >0)
+       {
+          aPdsPX *= ElSquare(1/aPInc.x);
+       }
+       if (aPInc.y >0)
+       {
+          aPdsPY *= ElSquare(1/aPInc.y);
+       }
+       if (aPInc.z >0)
+       {
+          aPdsZ *= ElSquare(1/aPInc.z);
+       }
+
+/*
+       if (1)
+       {
+          cBaseGPS * aBG = mEqOffsetGPS->Base();
+          Pt3d<Fonc_Num>  BaseInc();
+       }
+*/
+
+       return mEqOffsetGPS->AddObs(mObsCentre.mCentre,Pt3dr(aPdsPX,aPdsPY,aPdsZ));
    }
 
 

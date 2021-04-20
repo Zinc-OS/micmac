@@ -1184,6 +1184,61 @@ void  BinaryUnDumpFromFile(eTypeTapas & anObj,ELISE_fp & aFp)
 
 std::string  Mangling( eTypeTapas *) {return "58CA7259C38FBDFBFDBF";};
 
+eTypeOriVid  Str2eTypeOriVid(const std::string & aName)
+{
+   if (aName=="eBBA")
+      return eBBA;
+   else if (aName=="eSBBA")
+      return eSBBA;
+   else if (aName=="eSBBAFus")
+      return eSBBAFus;
+   else if (aName=="eUndefVal")
+      return eUndefVal;
+  else
+  {
+      cout << aName << " is not a correct value for enum eTypeOriVid\n" ;
+      ELISE_ASSERT(false,"XML enum value error");
+  }
+  return (eTypeOriVid) 0;
+}
+void xml_init(eTypeOriVid & aVal,cElXMLTree * aTree)
+{
+   aVal= Str2eTypeOriVid(aTree->Contenu());
+}
+std::string  eToString(const eTypeOriVid & anObj)
+{
+   if (anObj==eBBA)
+      return  "eBBA";
+   if (anObj==eSBBA)
+      return  "eSBBA";
+   if (anObj==eSBBAFus)
+      return  "eSBBAFus";
+   if (anObj==eUndefVal)
+      return  "eUndefVal";
+ std::cout << "Enum = eTypeOriVid\n";
+   ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
+   return "";
+}
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eTypeOriVid & anObj)
+{
+      return  cElXMLTree::ValueNode(aNameTag,eToString(anObj));
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const eTypeOriVid & anObj)
+{
+   BinaryDumpInFile(aFp,int(anObj));
+}
+
+void  BinaryUnDumpFromFile(eTypeOriVid & anObj,ELISE_fp & aFp)
+{
+   int aIVal;
+   BinaryUnDumpFromFile(aIVal,aFp);
+   anObj=(eTypeOriVid) aIVal;
+}
+
+std::string  Mangling( eTypeOriVid *) {return "B852E3923E4851F8FE3F";};
+
 eTypeMMByP  Str2eTypeMMByP(const std::string & aName)
 {
    if (aName=="eGround")
@@ -1662,6 +1717,8 @@ eTypePreCondRad  Str2eTypePreCondRad(const std::string & aName)
       return ePCR_Atgt;
    else if (aName=="ePCR_2SinAtgtS2")
       return ePCR_2SinAtgtS2;
+   else if (aName=="ePCR_Stereographik")
+      return ePCR_Stereographik;
   else
   {
       cout << aName << " is not a correct value for enum eTypePreCondRad\n" ;
@@ -1679,6 +1736,8 @@ std::string  eToString(const eTypePreCondRad & anObj)
       return  "ePCR_Atgt";
    if (anObj==ePCR_2SinAtgtS2)
       return  "ePCR_2SinAtgtS2";
+   if (anObj==ePCR_Stereographik)
+      return  "ePCR_Stereographik";
  std::cout << "Enum = eTypePreCondRad\n";
    ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
    return "";
@@ -1701,7 +1760,7 @@ void  BinaryUnDumpFromFile(eTypePreCondRad & anObj,ELISE_fp & aFp)
    anObj=(eTypePreCondRad) aIVal;
 }
 
-std::string  Mangling( eTypePreCondRad *) {return "F35D0134295568AAFE3F";};
+std::string  Mangling( eTypePreCondRad *) {return "F8E94F7337FE19D7FBBF";};
 
 eTypeSake  Str2eTypeSake(const std::string & aName)
 {
@@ -2079,6 +2138,8 @@ eModelesCalibUnif  Str2eModelesCalibUnif(const std::string & aName)
       return eModelePolyDeg0;
    else if (aName=="eModelePolyDeg1")
       return eModelePolyDeg1;
+   else if (aName=="eModele_Stereographik_FishEye_10_5_5")
+      return eModele_Stereographik_FishEye_10_5_5;
   else
   {
       cout << aName << " is not a correct value for enum eModelesCalibUnif\n" ;
@@ -2128,6 +2189,8 @@ std::string  eToString(const eModelesCalibUnif & anObj)
       return  "eModelePolyDeg0";
    if (anObj==eModelePolyDeg1)
       return  "eModelePolyDeg1";
+   if (anObj==eModele_Stereographik_FishEye_10_5_5)
+      return  "eModele_Stereographik_FishEye_10_5_5";
  std::cout << "Enum = eModelesCalibUnif\n";
    ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
    return "";
@@ -2150,7 +2213,7 @@ void  BinaryUnDumpFromFile(eModelesCalibUnif & anObj,ELISE_fp & aFp)
    anObj=(eModelesCalibUnif) aIVal;
 }
 
-std::string  Mangling( eModelesCalibUnif *) {return "F4A702E71FA52B8AFD3F";};
+std::string  Mangling( eModelesCalibUnif *) {return "C0E377046EC977C6F8BF";};
 
 eTypeProjectionCam  Str2eTypeProjectionCam(const std::string & aName)
 {
@@ -6364,6 +6427,28 @@ const cTplValGesInit< bool > & cOneAppuisDAF::UseForRTA()const
    return mUseForRTA;
 }
 
+
+cTplValGesInit< Pt3dr > & cOneAppuisDAF::Norm2Surf()
+{
+   return mNorm2Surf;
+}
+
+const cTplValGesInit< Pt3dr > & cOneAppuisDAF::Norm2Surf()const 
+{
+   return mNorm2Surf;
+}
+
+
+cTplValGesInit< double > & cOneAppuisDAF::TetaN2SHor()
+{
+   return mTetaN2SHor;
+}
+
+const cTplValGesInit< double > & cOneAppuisDAF::TetaN2SHor()const 
+{
+   return mTetaN2SHor;
+}
+
 void  BinaryUnDumpFromFile(cOneAppuisDAF & anObj,ELISE_fp & aFp)
 {
      BinaryUnDumpFromFile(anObj.Pt(),aFp);
@@ -6377,6 +6462,22 @@ void  BinaryUnDumpFromFile(cOneAppuisDAF & anObj,ELISE_fp & aFp)
         }
         else  anObj.UseForRTA().SetNoInit();
   } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.Norm2Surf().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.Norm2Surf().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.Norm2Surf().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.TetaN2SHor().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.TetaN2SHor().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.TetaN2SHor().SetNoInit();
+  } ;
 }
 
 void  BinaryDumpInFile(ELISE_fp & aFp,const cOneAppuisDAF & anObj)
@@ -6386,6 +6487,10 @@ void  BinaryDumpInFile(ELISE_fp & aFp,const cOneAppuisDAF & anObj)
     BinaryDumpInFile(aFp,anObj.Incertitude());
     BinaryDumpInFile(aFp,anObj.UseForRTA().IsInit());
     if (anObj.UseForRTA().IsInit()) BinaryDumpInFile(aFp,anObj.UseForRTA().Val());
+    BinaryDumpInFile(aFp,anObj.Norm2Surf().IsInit());
+    if (anObj.Norm2Surf().IsInit()) BinaryDumpInFile(aFp,anObj.Norm2Surf().Val());
+    BinaryDumpInFile(aFp,anObj.TetaN2SHor().IsInit());
+    if (anObj.TetaN2SHor().IsInit()) BinaryDumpInFile(aFp,anObj.TetaN2SHor().Val());
 }
 
 cElXMLTree * ToXMLTree(const cOneAppuisDAF & anObj)
@@ -6397,6 +6502,10 @@ cElXMLTree * ToXMLTree(const cOneAppuisDAF & anObj)
    aRes->AddFils(ToXMLTree(std::string("Incertitude"),anObj.Incertitude())->ReTagThis("Incertitude"));
    if (anObj.UseForRTA().IsInit())
       aRes->AddFils(::ToXMLTree(std::string("UseForRTA"),anObj.UseForRTA().Val())->ReTagThis("UseForRTA"));
+   if (anObj.Norm2Surf().IsInit())
+      aRes->AddFils(ToXMLTree(std::string("Norm2Surf"),anObj.Norm2Surf().Val())->ReTagThis("Norm2Surf"));
+   if (anObj.TetaN2SHor().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("TetaN2SHor"),anObj.TetaN2SHor().Val())->ReTagThis("TetaN2SHor"));
   aRes->mGXml = anObj.mGXml;
   XMLPopContext(anObj.mGXml);
   return aRes;
@@ -6414,9 +6523,13 @@ void xml_init(cOneAppuisDAF & anObj,cElXMLTree * aTree)
    xml_init(anObj.Incertitude(),aTree->Get("Incertitude",1)); //tototo 
 
    xml_init(anObj.UseForRTA(),aTree->Get("UseForRTA",1),bool(true)); //tototo 
+
+   xml_init(anObj.Norm2Surf(),aTree->Get("Norm2Surf",1)); //tototo 
+
+   xml_init(anObj.TetaN2SHor(),aTree->Get("TetaN2SHor",1)); //tototo 
 }
 
-std::string  Mangling( cOneAppuisDAF *) {return "B6347A05E335B2BFFD3F";};
+std::string  Mangling( cOneAppuisDAF *) {return "2FF4CBF525D2929EFF3F";};
 
 
 std::list< cOneAppuisDAF > & cDicoAppuisFlottant::OneAppuisDAF()
@@ -6475,7 +6588,7 @@ void xml_init(cDicoAppuisFlottant & anObj,cElXMLTree * aTree)
    xml_init(anObj.OneAppuisDAF(),aTree->GetAll("OneAppuisDAF",false,1));
 }
 
-std::string  Mangling( cDicoAppuisFlottant *) {return "19E38C257C947DA2FE3F";};
+std::string  Mangling( cDicoAppuisFlottant *) {return "96C4234B620110DFFD3F";};
 
 
 std::string & cCpleImgTime::NameIm()
@@ -6535,12 +6648,12 @@ void xml_init(cCpleImgTime & anObj,cElXMLTree * aTree)
 std::string  Mangling( cCpleImgTime *) {return "3983A3244BD3F380FDBF";};
 
 
-std::list< cCpleImgTime > & cDicoImgsTime::CpleImgTime()
+std::vector< cCpleImgTime > & cDicoImgsTime::CpleImgTime()
 {
    return mCpleImgTime;
 }
 
-const std::list< cCpleImgTime > & cDicoImgsTime::CpleImgTime()const 
+const std::vector< cCpleImgTime > & cDicoImgsTime::CpleImgTime()const 
 {
    return mCpleImgTime;
 }
@@ -6561,7 +6674,7 @@ void  BinaryUnDumpFromFile(cDicoImgsTime & anObj,ELISE_fp & aFp)
 void  BinaryDumpInFile(ELISE_fp & aFp,const cDicoImgsTime & anObj)
 {
     BinaryDumpInFile(aFp,(int)anObj.CpleImgTime().size());
-    for(  std::list< cCpleImgTime >::const_iterator iT=anObj.CpleImgTime().begin();
+    for(  std::vector< cCpleImgTime >::const_iterator iT=anObj.CpleImgTime().begin();
          iT!=anObj.CpleImgTime().end();
           iT++
     )
@@ -6573,7 +6686,7 @@ cElXMLTree * ToXMLTree(const cDicoImgsTime & anObj)
   XMLPushContext(anObj.mGXml);
   cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"DicoImgsTime",eXMLBranche);
   for
-  (       std::list< cCpleImgTime >::const_iterator it=anObj.CpleImgTime().begin();
+  (       std::vector< cCpleImgTime >::const_iterator it=anObj.CpleImgTime().begin();
       it !=anObj.CpleImgTime().end();
       it++
   ) 
@@ -6591,7 +6704,7 @@ void xml_init(cDicoImgsTime & anObj,cElXMLTree * aTree)
    xml_init(anObj.CpleImgTime(),aTree->GetAll("CpleImgTime",false,1));
 }
 
-std::string  Mangling( cDicoImgsTime *) {return "F6510E9501996A87FE3F";};
+std::string  Mangling( cDicoImgsTime *) {return "F216D6196685EFE8FE3F";};
 
 
 Pt3dr & cOneGpsDGF::Pt()
@@ -6699,12 +6812,12 @@ void xml_init(cOneGpsDGF & anObj,cElXMLTree * aTree)
 std::string  Mangling( cOneGpsDGF *) {return "20235A6E7B4562C4F93F";};
 
 
-std::list< cOneGpsDGF > & cDicoGpsFlottant::OneGpsDGF()
+std::vector< cOneGpsDGF > & cDicoGpsFlottant::OneGpsDGF()
 {
    return mOneGpsDGF;
 }
 
-const std::list< cOneGpsDGF > & cDicoGpsFlottant::OneGpsDGF()const 
+const std::vector< cOneGpsDGF > & cDicoGpsFlottant::OneGpsDGF()const 
 {
    return mOneGpsDGF;
 }
@@ -6725,7 +6838,7 @@ void  BinaryUnDumpFromFile(cDicoGpsFlottant & anObj,ELISE_fp & aFp)
 void  BinaryDumpInFile(ELISE_fp & aFp,const cDicoGpsFlottant & anObj)
 {
     BinaryDumpInFile(aFp,(int)anObj.OneGpsDGF().size());
-    for(  std::list< cOneGpsDGF >::const_iterator iT=anObj.OneGpsDGF().begin();
+    for(  std::vector< cOneGpsDGF >::const_iterator iT=anObj.OneGpsDGF().begin();
          iT!=anObj.OneGpsDGF().end();
           iT++
     )
@@ -6737,7 +6850,7 @@ cElXMLTree * ToXMLTree(const cDicoGpsFlottant & anObj)
   XMLPushContext(anObj.mGXml);
   cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"DicoGpsFlottant",eXMLBranche);
   for
-  (       std::list< cOneGpsDGF >::const_iterator it=anObj.OneGpsDGF().begin();
+  (       std::vector< cOneGpsDGF >::const_iterator it=anObj.OneGpsDGF().begin();
       it !=anObj.OneGpsDGF().end();
       it++
   ) 
@@ -6755,7 +6868,7 @@ void xml_init(cDicoGpsFlottant & anObj,cElXMLTree * aTree)
    xml_init(anObj.OneGpsDGF(),aTree->GetAll("OneGpsDGF",false,1));
 }
 
-std::string  Mangling( cDicoGpsFlottant *) {return "1AE5BDDB27CEC480FD3F";};
+std::string  Mangling( cDicoGpsFlottant *) {return "AA5686ABDAE3EFE7FE3F";};
 
 
 std::string & cOneModifIPF::KeyName()
@@ -8415,7 +8528,7 @@ void xml_init(cCalibrationInterneUnif & anObj,cElXMLTree * aTree)
    xml_init(anObj.Etats(),aTree->GetAll("Etats",false,1));
 }
 
-std::string  Mangling( cCalibrationInterneUnif *) {return "80938A7A80B18CB0FBBF";};
+std::string  Mangling( cCalibrationInterneUnif *) {return "006F5F61C105AAEBFC3F";};
 
 
 std::string & cTestNewGrid::A()
@@ -8723,7 +8836,7 @@ void xml_init(cPreCondRadial & anObj,cElXMLTree * aTree)
    xml_init(anObj.Mode(),aTree->Get("Mode",1)); //tototo 
 }
 
-std::string  Mangling( cPreCondRadial *) {return "EB69821946F891BCFE3F";};
+std::string  Mangling( cPreCondRadial *) {return "A15C642AC9E36291FF3F";};
 
 
 Pt2dr & cPreCondGrid::C()
@@ -8806,7 +8919,7 @@ void xml_init(cPreCondGrid & anObj,cElXMLTree * aTree)
    xml_init(anObj.PreCondRadial(),aTree->Get("PreCondRadial",1)); //tototo 
 }
 
-std::string  Mangling( cPreCondGrid *) {return "60C2E923469BB1A5FE3F";};
+std::string  Mangling( cPreCondGrid *) {return "CA13F33022DB27C5FD3F";};
 
 
 Pt2dr & cCalibrationInterneGrid::C()
@@ -8916,7 +9029,7 @@ void xml_init(cCalibrationInterneGrid & anObj,cElXMLTree * aTree)
    xml_init(anObj.Grid(),aTree->Get("Grid",1)); //tototo 
 }
 
-std::string  Mangling( cCalibrationInterneGrid *) {return "B38A18591DC29CCAFE3F";};
+std::string  Mangling( cCalibrationInterneGrid *) {return "303E4FE31BAE86BFFD3F";};
 
 
 Pt2dr & cSimilitudePlane::Scale()
@@ -9396,7 +9509,7 @@ void xml_init(cCalibDistortion & anObj,cElXMLTree * aTree)
    xml_init(anObj.ModGridDef(),aTree->Get("ModGridDef",1)); //tototo 
 }
 
-std::string  Mangling( cCalibDistortion *) {return "E97E1E79B94196D2FF3F";};
+std::string  Mangling( cCalibDistortion *) {return "7AD625D61A273488FF3F";};
 
 
 std::string & cCorrectionRefractionAPosteriori::FileEstimCam()
@@ -9941,7 +10054,7 @@ void xml_init(cCalibrationInternConique & anObj,cElXMLTree * aTree)
    xml_init(anObj.CorrectionRefractionAPosteriori(),aTree->Get("CorrectionRefractionAPosteriori",1)); //tototo 
 }
 
-std::string  Mangling( cCalibrationInternConique *) {return "7258E9A3E5A7ACC8FD3F";};
+std::string  Mangling( cCalibrationInternConique *) {return "58E66CB1E6695BD1FE3F";};
 
 
 Pt3dr & cRepereCartesien::Ori()
@@ -11647,7 +11760,7 @@ void xml_init(cOrientationConique & anObj,cElXMLTree * aTree)
    xml_init(anObj.ConvOri(),aTree->Get("ConvOri",1)); //tototo 
 }
 
-std::string  Mangling( cOrientationConique *) {return "6A2490FB331ACEEAFE3F";};
+std::string  Mangling( cOrientationConique *) {return "44FAF4A00D0ECEFEFC3F";};
 
 
 std::string & cMNT2Cmp::NameIm()
@@ -13856,6 +13969,138 @@ void xml_init(cListOfName & anObj,cElXMLTree * aTree)
 }
 
 std::string  Mangling( cListOfName *) {return "989865F5644C6DB3FCBF";};
+
+
+std::string & cModLin::NameIm()
+{
+   return mNameIm;
+}
+
+const std::string & cModLin::NameIm()const 
+{
+   return mNameIm;
+}
+
+
+double & cModLin::a()
+{
+   return ma;
+}
+
+const double & cModLin::a()const 
+{
+   return ma;
+}
+
+
+double & cModLin::b()
+{
+   return mb;
+}
+
+const double & cModLin::b()const 
+{
+   return mb;
+}
+
+void  BinaryUnDumpFromFile(cModLin & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.NameIm(),aFp);
+    BinaryUnDumpFromFile(anObj.a(),aFp);
+    BinaryUnDumpFromFile(anObj.b(),aFp);
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cModLin & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.NameIm());
+    BinaryDumpInFile(aFp,anObj.a());
+    BinaryDumpInFile(aFp,anObj.b());
+}
+
+cElXMLTree * ToXMLTree(const cModLin & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"ModLin",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("NameIm"),anObj.NameIm())->ReTagThis("NameIm"));
+   aRes->AddFils(::ToXMLTree(std::string("a"),anObj.a())->ReTagThis("a"));
+   aRes->AddFils(::ToXMLTree(std::string("b"),anObj.b())->ReTagThis("b"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cModLin & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.NameIm(),aTree->Get("NameIm",1)); //tototo 
+
+   xml_init(anObj.a(),aTree->Get("a",1)); //tototo 
+
+   xml_init(anObj.b(),aTree->Get("b",1)); //tototo 
+}
+
+std::string  Mangling( cModLin *) {return "882BD284E3B151FCFDBF";};
+
+
+std::list< cModLin > & cListOfRadiomEgalModel::ModLin()
+{
+   return mModLin;
+}
+
+const std::list< cModLin > & cListOfRadiomEgalModel::ModLin()const 
+{
+   return mModLin;
+}
+
+void  BinaryUnDumpFromFile(cListOfRadiomEgalModel & anObj,ELISE_fp & aFp)
+{
+   { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cModLin aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.ModLin().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cListOfRadiomEgalModel & anObj)
+{
+    BinaryDumpInFile(aFp,(int)anObj.ModLin().size());
+    for(  std::list< cModLin >::const_iterator iT=anObj.ModLin().begin();
+         iT!=anObj.ModLin().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cListOfRadiomEgalModel & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"ListOfRadiomEgalModel",eXMLBranche);
+  for
+  (       std::list< cModLin >::const_iterator it=anObj.ModLin().begin();
+      it !=anObj.ModLin().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree((*it))->ReTagThis("ModLin"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cListOfRadiomEgalModel & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.ModLin(),aTree->GetAll("ModLin",false,1));
+}
+
+std::string  Mangling( cListOfRadiomEgalModel *) {return "9823CB9929CC8097FF3F";};
 
 
 cTplValGesInit< bool > & cSetNameDescriptor::AddDirCur()
@@ -20265,6 +20510,17 @@ const std::string & cStructBlockCam::KeyIm2TimeCam()const
 }
 
 
+cTplValGesInit< std::string > & cStructBlockCam::MasterGrp()
+{
+   return mMasterGrp;
+}
+
+const cTplValGesInit< std::string > & cStructBlockCam::MasterGrp()const 
+{
+   return mMasterGrp;
+}
+
+
 std::list< cParamOrientSHC > & cStructBlockCam::ParamOrientSHC()
 {
    return LiaisonsSHC().Val().ParamOrientSHC();
@@ -20292,6 +20548,14 @@ void  BinaryUnDumpFromFile(cStructBlockCam & anObj,ELISE_fp & aFp)
   { bool IsInit;
        BinaryUnDumpFromFile(IsInit,aFp);
         if (IsInit) {
+             anObj.MasterGrp().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.MasterGrp().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.MasterGrp().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
              anObj.LiaisonsSHC().SetInitForUnUmp();
              BinaryUnDumpFromFile(anObj.LiaisonsSHC().ValForcedForUnUmp(),aFp);
         }
@@ -20302,6 +20566,8 @@ void  BinaryUnDumpFromFile(cStructBlockCam & anObj,ELISE_fp & aFp)
 void  BinaryDumpInFile(ELISE_fp & aFp,const cStructBlockCam & anObj)
 {
     BinaryDumpInFile(aFp,anObj.KeyIm2TimeCam());
+    BinaryDumpInFile(aFp,anObj.MasterGrp().IsInit());
+    if (anObj.MasterGrp().IsInit()) BinaryDumpInFile(aFp,anObj.MasterGrp().Val());
     BinaryDumpInFile(aFp,anObj.LiaisonsSHC().IsInit());
     if (anObj.LiaisonsSHC().IsInit()) BinaryDumpInFile(aFp,anObj.LiaisonsSHC().Val());
 }
@@ -20311,6 +20577,8 @@ cElXMLTree * ToXMLTree(const cStructBlockCam & anObj)
   XMLPushContext(anObj.mGXml);
   cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"StructBlockCam",eXMLBranche);
    aRes->AddFils(::ToXMLTree(std::string("KeyIm2TimeCam"),anObj.KeyIm2TimeCam())->ReTagThis("KeyIm2TimeCam"));
+   if (anObj.MasterGrp().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("MasterGrp"),anObj.MasterGrp().Val())->ReTagThis("MasterGrp"));
    if (anObj.LiaisonsSHC().IsInit())
       aRes->AddFils(ToXMLTree(anObj.LiaisonsSHC().Val())->ReTagThis("LiaisonsSHC"));
   aRes->mGXml = anObj.mGXml;
@@ -20325,10 +20593,12 @@ void xml_init(cStructBlockCam & anObj,cElXMLTree * aTree)
 
    xml_init(anObj.KeyIm2TimeCam(),aTree->Get("KeyIm2TimeCam",1)); //tototo 
 
+   xml_init(anObj.MasterGrp(),aTree->Get("MasterGrp",1)); //tototo 
+
    xml_init(anObj.LiaisonsSHC(),aTree->Get("LiaisonsSHC",1)); //tototo 
 }
 
-std::string  Mangling( cStructBlockCam *) {return "B06598583EB111DCFE3F";};
+std::string  Mangling( cStructBlockCam *) {return "9231968F03FA00A5FF3F";};
 
 
 std::list< std::string > & cXmlExivEntry::Names()
@@ -23559,5 +23829,1394 @@ void xml_init(cXml_SolBascRigide & anObj,cElXMLTree * aTree)
 }
 
 std::string  Mangling( cXml_SolBascRigide *) {return "6C261C07B3A65EC6FA3F";};
+
+eCmdMM_Feature  Str2eCmdMM_Feature(const std::string & aName)
+{
+   if (aName=="eCmf_Control")
+      return eCmf_Control;
+   else if (aName=="eCmf_Convert")
+      return eCmf_Convert;
+   else if (aName=="eCmf_ImProc")
+      return eCmf_ImProc;
+   else if (aName=="eCmf_Interf")
+      return eCmf_Interf;
+   else if (aName=="eCmf_Orient")
+      return eCmf_Orient;
+   else if (aName=="eCmf_OriAbs")
+      return eCmf_OriAbs;
+   else if (aName=="eCmf_OriSat")
+      return eCmf_OriSat;
+   else if (aName=="eCmf_TiePoints")
+      return eCmf_TiePoints;
+   else if (aName=="eCmf_ImMatch")
+      return eCmf_ImMatch;
+   else if (aName=="eCmf_Map2D")
+      return eCmf_Map2D;
+   else if (aName=="eCmf_TrajGnss")
+      return eCmf_TrajGnss;
+   else if (aName=="eCmf_NbVals")
+      return eCmf_NbVals;
+  else
+  {
+      cout << aName << " is not a correct value for enum eCmdMM_Feature\n" ;
+      ELISE_ASSERT(false,"XML enum value error");
+  }
+  return (eCmdMM_Feature) 0;
+}
+void xml_init(eCmdMM_Feature & aVal,cElXMLTree * aTree)
+{
+   aVal= Str2eCmdMM_Feature(aTree->Contenu());
+}
+std::string  eToString(const eCmdMM_Feature & anObj)
+{
+   if (anObj==eCmf_Control)
+      return  "eCmf_Control";
+   if (anObj==eCmf_Convert)
+      return  "eCmf_Convert";
+   if (anObj==eCmf_ImProc)
+      return  "eCmf_ImProc";
+   if (anObj==eCmf_Interf)
+      return  "eCmf_Interf";
+   if (anObj==eCmf_Orient)
+      return  "eCmf_Orient";
+   if (anObj==eCmf_OriAbs)
+      return  "eCmf_OriAbs";
+   if (anObj==eCmf_OriSat)
+      return  "eCmf_OriSat";
+   if (anObj==eCmf_TiePoints)
+      return  "eCmf_TiePoints";
+   if (anObj==eCmf_ImMatch)
+      return  "eCmf_ImMatch";
+   if (anObj==eCmf_Map2D)
+      return  "eCmf_Map2D";
+   if (anObj==eCmf_TrajGnss)
+      return  "eCmf_TrajGnss";
+   if (anObj==eCmf_NbVals)
+      return  "eCmf_NbVals";
+ std::cout << "Enum = eCmdMM_Feature\n";
+   ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
+   return "";
+}
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eCmdMM_Feature & anObj)
+{
+      return  cElXMLTree::ValueNode(aNameTag,eToString(anObj));
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const eCmdMM_Feature & anObj)
+{
+   BinaryDumpInFile(aFp,int(anObj));
+}
+
+void  BinaryUnDumpFromFile(eCmdMM_Feature & anObj,ELISE_fp & aFp)
+{
+   int aIVal;
+   BinaryUnDumpFromFile(aIVal,aFp);
+   anObj=(eCmdMM_Feature) aIVal;
+}
+
+std::string  Mangling( eCmdMM_Feature *) {return "29DE526E46DD9CF9FD3F";};
+
+eCmdMM_DataType  Str2eCmdMM_DataType(const std::string & aName)
+{
+   if (aName=="eCmDt_Orient")
+      return eCmDt_Orient;
+   else if (aName=="eCmDt_Images")
+      return eCmDt_Images;
+   else if (aName=="eCmDt_TiePoints")
+      return eCmDt_TiePoints;
+   else if (aName=="eCmDt_CloudXML")
+      return eCmDt_CloudXML;
+   else if (aName=="eCmDt_FileXML")
+      return eCmDt_FileXML;
+   else if (aName=="eCmDt_FileTxt")
+      return eCmDt_FileTxt;
+   else if (aName=="eCmDt_GCP")
+      return eCmDt_GCP;
+   else if (aName=="eCmDt_PtImMes")
+      return eCmDt_PtImMes;
+   else if (aName=="eCmDt_Any")
+      return eCmDt_Any;
+   else if (aName=="eCmDt_None")
+      return eCmDt_None;
+   else if (aName=="eCmDt_Ply")
+      return eCmDt_Ply;
+   else if (aName=="eCmDt_Map2D")
+      return eCmDt_Map2D;
+   else if (aName=="eCmDt_NbVals")
+      return eCmDt_NbVals;
+  else
+  {
+      cout << aName << " is not a correct value for enum eCmdMM_DataType\n" ;
+      ELISE_ASSERT(false,"XML enum value error");
+  }
+  return (eCmdMM_DataType) 0;
+}
+void xml_init(eCmdMM_DataType & aVal,cElXMLTree * aTree)
+{
+   aVal= Str2eCmdMM_DataType(aTree->Contenu());
+}
+std::string  eToString(const eCmdMM_DataType & anObj)
+{
+   if (anObj==eCmDt_Orient)
+      return  "eCmDt_Orient";
+   if (anObj==eCmDt_Images)
+      return  "eCmDt_Images";
+   if (anObj==eCmDt_TiePoints)
+      return  "eCmDt_TiePoints";
+   if (anObj==eCmDt_CloudXML)
+      return  "eCmDt_CloudXML";
+   if (anObj==eCmDt_FileXML)
+      return  "eCmDt_FileXML";
+   if (anObj==eCmDt_FileTxt)
+      return  "eCmDt_FileTxt";
+   if (anObj==eCmDt_GCP)
+      return  "eCmDt_GCP";
+   if (anObj==eCmDt_PtImMes)
+      return  "eCmDt_PtImMes";
+   if (anObj==eCmDt_Any)
+      return  "eCmDt_Any";
+   if (anObj==eCmDt_None)
+      return  "eCmDt_None";
+   if (anObj==eCmDt_Ply)
+      return  "eCmDt_Ply";
+   if (anObj==eCmDt_Map2D)
+      return  "eCmDt_Map2D";
+   if (anObj==eCmDt_NbVals)
+      return  "eCmDt_NbVals";
+ std::cout << "Enum = eCmdMM_DataType\n";
+   ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
+   return "";
+}
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eCmdMM_DataType & anObj)
+{
+      return  cElXMLTree::ValueNode(aNameTag,eToString(anObj));
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const eCmdMM_DataType & anObj)
+{
+   BinaryDumpInFile(aFp,int(anObj));
+}
+
+void  BinaryUnDumpFromFile(eCmdMM_DataType & anObj,ELISE_fp & aFp)
+{
+   int aIVal;
+   BinaryUnDumpFromFile(aIVal,aFp);
+   anObj=(eCmdMM_DataType) aIVal;
+}
+
+std::string  Mangling( eCmdMM_DataType *) {return "CED194FEA534A5D9FD3F";};
+
+eCmdMM_Group  Str2eCmdMM_Group(const std::string & aName)
+{
+   if (aName=="eCmGrp_mm3d")
+      return eCmGrp_mm3d;
+   else if (aName=="eCmGrp_TestLib")
+      return eCmGrp_TestLib;
+   else if (aName=="eCmGrp_SateLib")
+      return eCmGrp_SateLib;
+   else if (aName=="eCmGrp_SimuLib")
+      return eCmGrp_SimuLib;
+   else if (aName=="eCmGrp_XLib")
+      return eCmGrp_XLib;
+   else if (aName=="eCmGrp_NbVals")
+      return eCmGrp_NbVals;
+  else
+  {
+      cout << aName << " is not a correct value for enum eCmdMM_Group\n" ;
+      ELISE_ASSERT(false,"XML enum value error");
+  }
+  return (eCmdMM_Group) 0;
+}
+void xml_init(eCmdMM_Group & aVal,cElXMLTree * aTree)
+{
+   aVal= Str2eCmdMM_Group(aTree->Contenu());
+}
+std::string  eToString(const eCmdMM_Group & anObj)
+{
+   if (anObj==eCmGrp_mm3d)
+      return  "eCmGrp_mm3d";
+   if (anObj==eCmGrp_TestLib)
+      return  "eCmGrp_TestLib";
+   if (anObj==eCmGrp_SateLib)
+      return  "eCmGrp_SateLib";
+   if (anObj==eCmGrp_SimuLib)
+      return  "eCmGrp_SimuLib";
+   if (anObj==eCmGrp_XLib)
+      return  "eCmGrp_XLib";
+   if (anObj==eCmGrp_NbVals)
+      return  "eCmGrp_NbVals";
+ std::cout << "Enum = eCmdMM_Group\n";
+   ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
+   return "";
+}
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eCmdMM_Group & anObj)
+{
+      return  cElXMLTree::ValueNode(aNameTag,eToString(anObj));
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const eCmdMM_Group & anObj)
+{
+   BinaryDumpInFile(aFp,int(anObj));
+}
+
+void  BinaryUnDumpFromFile(eCmdMM_Group & anObj,ELISE_fp & aFp)
+{
+   int aIVal;
+   BinaryUnDumpFromFile(aIVal,aFp);
+   anObj=(eCmdMM_Group) aIVal;
+}
+
+std::string  Mangling( eCmdMM_Group *) {return "D8FC2F2E594DA8AFFF3F";};
+
+
+std::string & cXml_Specif1MMCmd::Name()
+{
+   return mName;
+}
+
+const std::string & cXml_Specif1MMCmd::Name()const 
+{
+   return mName;
+}
+
+
+eCmdMM_Feature & cXml_Specif1MMCmd::MainFeature()
+{
+   return mMainFeature;
+}
+
+const eCmdMM_Feature & cXml_Specif1MMCmd::MainFeature()const 
+{
+   return mMainFeature;
+}
+
+
+eCmdMM_DataType & cXml_Specif1MMCmd::MainInput()
+{
+   return mMainInput;
+}
+
+const eCmdMM_DataType & cXml_Specif1MMCmd::MainInput()const 
+{
+   return mMainInput;
+}
+
+
+eCmdMM_DataType & cXml_Specif1MMCmd::MainOutput()
+{
+   return mMainOutput;
+}
+
+const eCmdMM_DataType & cXml_Specif1MMCmd::MainOutput()const 
+{
+   return mMainOutput;
+}
+
+
+cTplValGesInit< eCmdMM_Group > & cXml_Specif1MMCmd::Group()
+{
+   return mGroup;
+}
+
+const cTplValGesInit< eCmdMM_Group > & cXml_Specif1MMCmd::Group()const 
+{
+   return mGroup;
+}
+
+
+cTplValGesInit< std::string > & cXml_Specif1MMCmd::Option()
+{
+   return mOption;
+}
+
+const cTplValGesInit< std::string > & cXml_Specif1MMCmd::Option()const 
+{
+   return mOption;
+}
+
+
+std::list< eCmdMM_Feature > & cXml_Specif1MMCmd::OtherFeature()
+{
+   return mOtherFeature;
+}
+
+const std::list< eCmdMM_Feature > & cXml_Specif1MMCmd::OtherFeature()const 
+{
+   return mOtherFeature;
+}
+
+
+std::list< eCmdMM_DataType > & cXml_Specif1MMCmd::OtherInput()
+{
+   return mOtherInput;
+}
+
+const std::list< eCmdMM_DataType > & cXml_Specif1MMCmd::OtherInput()const 
+{
+   return mOtherInput;
+}
+
+
+std::list< eCmdMM_DataType > & cXml_Specif1MMCmd::OtherOutput()
+{
+   return mOtherOutput;
+}
+
+const std::list< eCmdMM_DataType > & cXml_Specif1MMCmd::OtherOutput()const 
+{
+   return mOtherOutput;
+}
+
+
+cTplValGesInit< Pt3di > & cXml_Specif1MMCmd::CreationDate()
+{
+   return mCreationDate;
+}
+
+const cTplValGesInit< Pt3di > & cXml_Specif1MMCmd::CreationDate()const 
+{
+   return mCreationDate;
+}
+
+
+cTplValGesInit< Pt3di > & cXml_Specif1MMCmd::ModifDate()
+{
+   return mModifDate;
+}
+
+const cTplValGesInit< Pt3di > & cXml_Specif1MMCmd::ModifDate()const 
+{
+   return mModifDate;
+}
+
+
+std::list< std::string > & cXml_Specif1MMCmd::DependOf()
+{
+   return mDependOf;
+}
+
+const std::list< std::string > & cXml_Specif1MMCmd::DependOf()const 
+{
+   return mDependOf;
+}
+
+
+std::list< std::string > & cXml_Specif1MMCmd::UsedBy()
+{
+   return mUsedBy;
+}
+
+const std::list< std::string > & cXml_Specif1MMCmd::UsedBy()const 
+{
+   return mUsedBy;
+}
+
+void  BinaryUnDumpFromFile(cXml_Specif1MMCmd & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.Name(),aFp);
+    BinaryUnDumpFromFile(anObj.MainFeature(),aFp);
+    BinaryUnDumpFromFile(anObj.MainInput(),aFp);
+    BinaryUnDumpFromFile(anObj.MainOutput(),aFp);
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.Group().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.Group().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.Group().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.Option().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.Option().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.Option().SetNoInit();
+  } ;
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             eCmdMM_Feature aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.OtherFeature().push_back(aVal);
+        }
+  } ;
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             eCmdMM_DataType aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.OtherInput().push_back(aVal);
+        }
+  } ;
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             eCmdMM_DataType aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.OtherOutput().push_back(aVal);
+        }
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.CreationDate().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.CreationDate().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.CreationDate().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.ModifDate().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.ModifDate().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.ModifDate().SetNoInit();
+  } ;
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             std::string aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.DependOf().push_back(aVal);
+        }
+  } ;
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             std::string aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.UsedBy().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cXml_Specif1MMCmd & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.Name());
+    BinaryDumpInFile(aFp,anObj.MainFeature());
+    BinaryDumpInFile(aFp,anObj.MainInput());
+    BinaryDumpInFile(aFp,anObj.MainOutput());
+    BinaryDumpInFile(aFp,anObj.Group().IsInit());
+    if (anObj.Group().IsInit()) BinaryDumpInFile(aFp,anObj.Group().Val());
+    BinaryDumpInFile(aFp,anObj.Option().IsInit());
+    if (anObj.Option().IsInit()) BinaryDumpInFile(aFp,anObj.Option().Val());
+    BinaryDumpInFile(aFp,(int)anObj.OtherFeature().size());
+    for(  std::list< eCmdMM_Feature >::const_iterator iT=anObj.OtherFeature().begin();
+         iT!=anObj.OtherFeature().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+    BinaryDumpInFile(aFp,(int)anObj.OtherInput().size());
+    for(  std::list< eCmdMM_DataType >::const_iterator iT=anObj.OtherInput().begin();
+         iT!=anObj.OtherInput().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+    BinaryDumpInFile(aFp,(int)anObj.OtherOutput().size());
+    for(  std::list< eCmdMM_DataType >::const_iterator iT=anObj.OtherOutput().begin();
+         iT!=anObj.OtherOutput().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+    BinaryDumpInFile(aFp,anObj.CreationDate().IsInit());
+    if (anObj.CreationDate().IsInit()) BinaryDumpInFile(aFp,anObj.CreationDate().Val());
+    BinaryDumpInFile(aFp,anObj.ModifDate().IsInit());
+    if (anObj.ModifDate().IsInit()) BinaryDumpInFile(aFp,anObj.ModifDate().Val());
+    BinaryDumpInFile(aFp,(int)anObj.DependOf().size());
+    for(  std::list< std::string >::const_iterator iT=anObj.DependOf().begin();
+         iT!=anObj.DependOf().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+    BinaryDumpInFile(aFp,(int)anObj.UsedBy().size());
+    for(  std::list< std::string >::const_iterator iT=anObj.UsedBy().begin();
+         iT!=anObj.UsedBy().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cXml_Specif1MMCmd & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"Xml_Specif1MMCmd",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("Name"),anObj.Name())->ReTagThis("Name"));
+   aRes->AddFils(ToXMLTree(std::string("MainFeature"),anObj.MainFeature())->ReTagThis("MainFeature"));
+   aRes->AddFils(ToXMLTree(std::string("MainInput"),anObj.MainInput())->ReTagThis("MainInput"));
+   aRes->AddFils(ToXMLTree(std::string("MainOutput"),anObj.MainOutput())->ReTagThis("MainOutput"));
+   if (anObj.Group().IsInit())
+      aRes->AddFils(ToXMLTree(std::string("Group"),anObj.Group().Val())->ReTagThis("Group"));
+   if (anObj.Option().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("Option"),anObj.Option().Val())->ReTagThis("Option"));
+  for
+  (       std::list< eCmdMM_Feature >::const_iterator it=anObj.OtherFeature().begin();
+      it !=anObj.OtherFeature().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree(std::string("OtherFeature"),(*it))->ReTagThis("OtherFeature"));
+  for
+  (       std::list< eCmdMM_DataType >::const_iterator it=anObj.OtherInput().begin();
+      it !=anObj.OtherInput().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree(std::string("OtherInput"),(*it))->ReTagThis("OtherInput"));
+  for
+  (       std::list< eCmdMM_DataType >::const_iterator it=anObj.OtherOutput().begin();
+      it !=anObj.OtherOutput().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree(std::string("OtherOutput"),(*it))->ReTagThis("OtherOutput"));
+   if (anObj.CreationDate().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("CreationDate"),anObj.CreationDate().Val())->ReTagThis("CreationDate"));
+   if (anObj.ModifDate().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("ModifDate"),anObj.ModifDate().Val())->ReTagThis("ModifDate"));
+  for
+  (       std::list< std::string >::const_iterator it=anObj.DependOf().begin();
+      it !=anObj.DependOf().end();
+      it++
+  ) 
+      aRes->AddFils(::ToXMLTree(std::string("DependOf"),(*it))->ReTagThis("DependOf"));
+  for
+  (       std::list< std::string >::const_iterator it=anObj.UsedBy().begin();
+      it !=anObj.UsedBy().end();
+      it++
+  ) 
+      aRes->AddFils(::ToXMLTree(std::string("UsedBy"),(*it))->ReTagThis("UsedBy"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cXml_Specif1MMCmd & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.Name(),aTree->Get("Name",1)); //tototo 
+
+   xml_init(anObj.MainFeature(),aTree->Get("MainFeature",1)); //tototo 
+
+   xml_init(anObj.MainInput(),aTree->Get("MainInput",1)); //tototo 
+
+   xml_init(anObj.MainOutput(),aTree->Get("MainOutput",1)); //tototo 
+
+   xml_init(anObj.Group(),aTree->Get("Group",1)); //tototo 
+
+   xml_init(anObj.Option(),aTree->Get("Option",1)); //tototo 
+
+   xml_init(anObj.OtherFeature(),aTree->GetAll("OtherFeature",false,1));
+
+   xml_init(anObj.OtherInput(),aTree->GetAll("OtherInput",false,1));
+
+   xml_init(anObj.OtherOutput(),aTree->GetAll("OtherOutput",false,1));
+
+   xml_init(anObj.CreationDate(),aTree->Get("CreationDate",1),Pt3di(Pt3di(21,9,2008))); //tototo 
+
+   xml_init(anObj.ModifDate(),aTree->Get("ModifDate",1),Pt3di(Pt3di(21,9,2008))); //tototo 
+
+   xml_init(anObj.DependOf(),aTree->GetAll("DependOf",false,1));
+
+   xml_init(anObj.UsedBy(),aTree->GetAll("UsedBy",false,1));
+}
+
+std::string  Mangling( cXml_Specif1MMCmd *) {return "EB9D5EC5593ED8A1FF3F";};
+
+
+std::list< cXml_Specif1MMCmd > & cXml_SpecifAllMMCmd::OneCmd()
+{
+   return mOneCmd;
+}
+
+const std::list< cXml_Specif1MMCmd > & cXml_SpecifAllMMCmd::OneCmd()const 
+{
+   return mOneCmd;
+}
+
+void  BinaryUnDumpFromFile(cXml_SpecifAllMMCmd & anObj,ELISE_fp & aFp)
+{
+   { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cXml_Specif1MMCmd aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.OneCmd().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cXml_SpecifAllMMCmd & anObj)
+{
+    BinaryDumpInFile(aFp,(int)anObj.OneCmd().size());
+    for(  std::list< cXml_Specif1MMCmd >::const_iterator iT=anObj.OneCmd().begin();
+         iT!=anObj.OneCmd().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cXml_SpecifAllMMCmd & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"Xml_SpecifAllMMCmd",eXMLBranche);
+  for
+  (       std::list< cXml_Specif1MMCmd >::const_iterator it=anObj.OneCmd().begin();
+      it !=anObj.OneCmd().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree((*it))->ReTagThis("OneCmd"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cXml_SpecifAllMMCmd & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.OneCmd(),aTree->GetAll("OneCmd",false,1));
+}
+
+std::string  Mangling( cXml_SpecifAllMMCmd *) {return "20390C65F56AF2DEFB3F";};
+
+
+cTplValGesInit< int > & cGS_OneLinear::Period()
+{
+   return mPeriod;
+}
+
+const cTplValGesInit< int > & cGS_OneLinear::Period()const 
+{
+   return mPeriod;
+}
+
+
+int & cGS_OneLinear::DeltaMin()
+{
+   return mDeltaMin;
+}
+
+const int & cGS_OneLinear::DeltaMin()const 
+{
+   return mDeltaMin;
+}
+
+
+int & cGS_OneLinear::DeltaMax()
+{
+   return mDeltaMax;
+}
+
+const int & cGS_OneLinear::DeltaMax()const 
+{
+   return mDeltaMax;
+}
+
+
+std::list< cCpleString > & cGS_OneLinear::CpleGrp()
+{
+   return mCpleGrp;
+}
+
+const std::list< cCpleString > & cGS_OneLinear::CpleGrp()const 
+{
+   return mCpleGrp;
+}
+
+void  BinaryUnDumpFromFile(cGS_OneLinear & anObj,ELISE_fp & aFp)
+{
+   { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.Period().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.Period().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.Period().SetNoInit();
+  } ;
+    BinaryUnDumpFromFile(anObj.DeltaMin(),aFp);
+    BinaryUnDumpFromFile(anObj.DeltaMax(),aFp);
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cCpleString aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.CpleGrp().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cGS_OneLinear & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.Period().IsInit());
+    if (anObj.Period().IsInit()) BinaryDumpInFile(aFp,anObj.Period().Val());
+    BinaryDumpInFile(aFp,anObj.DeltaMin());
+    BinaryDumpInFile(aFp,anObj.DeltaMax());
+    BinaryDumpInFile(aFp,(int)anObj.CpleGrp().size());
+    for(  std::list< cCpleString >::const_iterator iT=anObj.CpleGrp().begin();
+         iT!=anObj.CpleGrp().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cGS_OneLinear & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"GS_OneLinear",eXMLBranche);
+   if (anObj.Period().IsInit())
+      aRes->AddFils(::ToXMLTree(std::string("Period"),anObj.Period().Val())->ReTagThis("Period"));
+   aRes->AddFils(::ToXMLTree(std::string("DeltaMin"),anObj.DeltaMin())->ReTagThis("DeltaMin"));
+   aRes->AddFils(::ToXMLTree(std::string("DeltaMax"),anObj.DeltaMax())->ReTagThis("DeltaMax"));
+  for
+  (       std::list< cCpleString >::const_iterator it=anObj.CpleGrp().begin();
+      it !=anObj.CpleGrp().end();
+      it++
+  ) 
+      aRes->AddFils(::ToXMLTree(std::string("CpleGrp"),(*it))->ReTagThis("CpleGrp"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cGS_OneLinear & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.Period(),aTree->Get("Period",1),int(1)); //tototo 
+
+   xml_init(anObj.DeltaMin(),aTree->Get("DeltaMin",1)); //tototo 
+
+   xml_init(anObj.DeltaMax(),aTree->Get("DeltaMax",1)); //tototo 
+
+   xml_init(anObj.CpleGrp(),aTree->GetAll("CpleGrp",false,1));
+}
+
+std::string  Mangling( cGS_OneLinear *) {return "58A1E21FDC4D6BC8FDBF";};
+
+
+std::list< cGS_OneLinear > & cGS_SectionLinear::GS_OneLinear()
+{
+   return mGS_OneLinear;
+}
+
+const std::list< cGS_OneLinear > & cGS_SectionLinear::GS_OneLinear()const 
+{
+   return mGS_OneLinear;
+}
+
+void  BinaryUnDumpFromFile(cGS_SectionLinear & anObj,ELISE_fp & aFp)
+{
+   { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cGS_OneLinear aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.GS_OneLinear().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cGS_SectionLinear & anObj)
+{
+    BinaryDumpInFile(aFp,(int)anObj.GS_OneLinear().size());
+    for(  std::list< cGS_OneLinear >::const_iterator iT=anObj.GS_OneLinear().begin();
+         iT!=anObj.GS_OneLinear().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cGS_SectionLinear & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"GS_SectionLinear",eXMLBranche);
+  for
+  (       std::list< cGS_OneLinear >::const_iterator it=anObj.GS_OneLinear().begin();
+      it !=anObj.GS_OneLinear().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree((*it))->ReTagThis("GS_OneLinear"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cGS_SectionLinear & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.GS_OneLinear(),aTree->GetAll("GS_OneLinear",false,1));
+}
+
+std::string  Mangling( cGS_SectionLinear *) {return "5AD3092E3A64FEC0FE3F";};
+
+
+double & cGS_SectionCross::DistMax()
+{
+   return mDistMax;
+}
+
+const double & cGS_SectionCross::DistMax()const 
+{
+   return mDistMax;
+}
+
+
+double & cGS_SectionCross::DistCurvMin()
+{
+   return mDistCurvMin;
+}
+
+const double & cGS_SectionCross::DistCurvMin()const 
+{
+   return mDistCurvMin;
+}
+
+
+double & cGS_SectionCross::AngleMinSpeed()
+{
+   return mAngleMinSpeed;
+}
+
+const double & cGS_SectionCross::AngleMinSpeed()const 
+{
+   return mAngleMinSpeed;
+}
+
+
+double & cGS_SectionCross::DistMinTraj()
+{
+   return mDistMinTraj;
+}
+
+const double & cGS_SectionCross::DistMinTraj()const 
+{
+   return mDistMinTraj;
+}
+
+
+std::list< std::string > & cGS_SectionCross::ListCam()
+{
+   return mListCam;
+}
+
+const std::list< std::string > & cGS_SectionCross::ListCam()const 
+{
+   return mListCam;
+}
+
+void  BinaryUnDumpFromFile(cGS_SectionCross & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.DistMax(),aFp);
+    BinaryUnDumpFromFile(anObj.DistCurvMin(),aFp);
+    BinaryUnDumpFromFile(anObj.AngleMinSpeed(),aFp);
+    BinaryUnDumpFromFile(anObj.DistMinTraj(),aFp);
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             std::string aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.ListCam().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cGS_SectionCross & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.DistMax());
+    BinaryDumpInFile(aFp,anObj.DistCurvMin());
+    BinaryDumpInFile(aFp,anObj.AngleMinSpeed());
+    BinaryDumpInFile(aFp,anObj.DistMinTraj());
+    BinaryDumpInFile(aFp,(int)anObj.ListCam().size());
+    for(  std::list< std::string >::const_iterator iT=anObj.ListCam().begin();
+         iT!=anObj.ListCam().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cGS_SectionCross & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"GS_SectionCross",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("DistMax"),anObj.DistMax())->ReTagThis("DistMax"));
+   aRes->AddFils(::ToXMLTree(std::string("DistCurvMin"),anObj.DistCurvMin())->ReTagThis("DistCurvMin"));
+   aRes->AddFils(::ToXMLTree(std::string("AngleMinSpeed"),anObj.AngleMinSpeed())->ReTagThis("AngleMinSpeed"));
+   aRes->AddFils(::ToXMLTree(std::string("DistMinTraj"),anObj.DistMinTraj())->ReTagThis("DistMinTraj"));
+  for
+  (       std::list< std::string >::const_iterator it=anObj.ListCam().begin();
+      it !=anObj.ListCam().end();
+      it++
+  ) 
+      aRes->AddFils(::ToXMLTree(std::string("ListCam"),(*it))->ReTagThis("ListCam"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cGS_SectionCross & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.DistMax(),aTree->Get("DistMax",1)); //tototo 
+
+   xml_init(anObj.DistCurvMin(),aTree->Get("DistCurvMin",1)); //tototo 
+
+   xml_init(anObj.AngleMinSpeed(),aTree->Get("AngleMinSpeed",1)); //tototo 
+
+   xml_init(anObj.DistMinTraj(),aTree->Get("DistMinTraj",1)); //tototo 
+
+   xml_init(anObj.ListCam(),aTree->GetAll("ListCam",false,1));
+}
+
+std::string  Mangling( cGS_SectionCross *) {return "1722A5927232D4EEFC3F";};
+
+
+double & cOneInterv_OT::DistMax()
+{
+   return mDistMax;
+}
+
+const double & cOneInterv_OT::DistMax()const 
+{
+   return mDistMax;
+}
+
+
+std::list< cCpleString > & cOneInterv_OT::CpleGrp()
+{
+   return mCpleGrp;
+}
+
+const std::list< cCpleString > & cOneInterv_OT::CpleGrp()const 
+{
+   return mCpleGrp;
+}
+
+void  BinaryUnDumpFromFile(cOneInterv_OT & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.DistMax(),aFp);
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cCpleString aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.CpleGrp().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cOneInterv_OT & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.DistMax());
+    BinaryDumpInFile(aFp,(int)anObj.CpleGrp().size());
+    for(  std::list< cCpleString >::const_iterator iT=anObj.CpleGrp().begin();
+         iT!=anObj.CpleGrp().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cOneInterv_OT & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"OneInterv_OT",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("DistMax"),anObj.DistMax())->ReTagThis("DistMax"));
+  for
+  (       std::list< cCpleString >::const_iterator it=anObj.CpleGrp().begin();
+      it !=anObj.CpleGrp().end();
+      it++
+  ) 
+      aRes->AddFils(::ToXMLTree(std::string("CpleGrp"),(*it))->ReTagThis("CpleGrp"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cOneInterv_OT & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.DistMax(),aTree->Get("DistMax",1)); //tototo 
+
+   xml_init(anObj.CpleGrp(),aTree->GetAll("CpleGrp",false,1));
+}
+
+std::string  Mangling( cOneInterv_OT *) {return "58C0CB36EE31F8ABFA3F";};
+
+
+double & cGS_SectionOverlapingTraj::AngleMaxSpeed()
+{
+   return mAngleMaxSpeed;
+}
+
+const double & cGS_SectionOverlapingTraj::AngleMaxSpeed()const 
+{
+   return mAngleMaxSpeed;
+}
+
+
+double & cGS_SectionOverlapingTraj::DistMaxTraj()
+{
+   return mDistMaxTraj;
+}
+
+const double & cGS_SectionOverlapingTraj::DistMaxTraj()const 
+{
+   return mDistMaxTraj;
+}
+
+
+std::list< cOneInterv_OT > & cGS_SectionOverlapingTraj::OneInterv_OT()
+{
+   return mOneInterv_OT;
+}
+
+const std::list< cOneInterv_OT > & cGS_SectionOverlapingTraj::OneInterv_OT()const 
+{
+   return mOneInterv_OT;
+}
+
+void  BinaryUnDumpFromFile(cGS_SectionOverlapingTraj & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.AngleMaxSpeed(),aFp);
+    BinaryUnDumpFromFile(anObj.DistMaxTraj(),aFp);
+  { int aNb;
+    BinaryUnDumpFromFile(aNb,aFp);
+        for(  int aK=0 ; aK<aNb ; aK++)
+        {
+             cOneInterv_OT aVal;
+              BinaryUnDumpFromFile(aVal,aFp);
+              anObj.OneInterv_OT().push_back(aVal);
+        }
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cGS_SectionOverlapingTraj & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.AngleMaxSpeed());
+    BinaryDumpInFile(aFp,anObj.DistMaxTraj());
+    BinaryDumpInFile(aFp,(int)anObj.OneInterv_OT().size());
+    for(  std::list< cOneInterv_OT >::const_iterator iT=anObj.OneInterv_OT().begin();
+         iT!=anObj.OneInterv_OT().end();
+          iT++
+    )
+        BinaryDumpInFile(aFp,*iT);
+}
+
+cElXMLTree * ToXMLTree(const cGS_SectionOverlapingTraj & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"GS_SectionOverlapingTraj",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("AngleMaxSpeed"),anObj.AngleMaxSpeed())->ReTagThis("AngleMaxSpeed"));
+   aRes->AddFils(::ToXMLTree(std::string("DistMaxTraj"),anObj.DistMaxTraj())->ReTagThis("DistMaxTraj"));
+  for
+  (       std::list< cOneInterv_OT >::const_iterator it=anObj.OneInterv_OT().begin();
+      it !=anObj.OneInterv_OT().end();
+      it++
+  ) 
+      aRes->AddFils(ToXMLTree((*it))->ReTagThis("OneInterv_OT"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cGS_SectionOverlapingTraj & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.AngleMaxSpeed(),aTree->Get("AngleMaxSpeed",1)); //tototo 
+
+   xml_init(anObj.DistMaxTraj(),aTree->Get("DistMaxTraj",1)); //tototo 
+
+   xml_init(anObj.OneInterv_OT(),aTree->GetAll("OneInterv_OT",false,1));
+}
+
+std::string  Mangling( cGS_SectionOverlapingTraj *) {return "DB47F3DDFF7A7AEDFD3F";};
+
+
+std::string & cXml_ParamGraphStereopolis::NameGrpC()
+{
+   return mNameGrpC;
+}
+
+const std::string & cXml_ParamGraphStereopolis::NameGrpC()const 
+{
+   return mNameGrpC;
+}
+
+
+std::list< cGS_OneLinear > & cXml_ParamGraphStereopolis::GS_OneLinear()
+{
+   return GS_SectionLinear().Val().GS_OneLinear();
+}
+
+const std::list< cGS_OneLinear > & cXml_ParamGraphStereopolis::GS_OneLinear()const 
+{
+   return GS_SectionLinear().Val().GS_OneLinear();
+}
+
+
+cTplValGesInit< cGS_SectionLinear > & cXml_ParamGraphStereopolis::GS_SectionLinear()
+{
+   return mGS_SectionLinear;
+}
+
+const cTplValGesInit< cGS_SectionLinear > & cXml_ParamGraphStereopolis::GS_SectionLinear()const 
+{
+   return mGS_SectionLinear;
+}
+
+
+double & cXml_ParamGraphStereopolis::DistMax()
+{
+   return GS_SectionCross().Val().DistMax();
+}
+
+const double & cXml_ParamGraphStereopolis::DistMax()const 
+{
+   return GS_SectionCross().Val().DistMax();
+}
+
+
+double & cXml_ParamGraphStereopolis::DistCurvMin()
+{
+   return GS_SectionCross().Val().DistCurvMin();
+}
+
+const double & cXml_ParamGraphStereopolis::DistCurvMin()const 
+{
+   return GS_SectionCross().Val().DistCurvMin();
+}
+
+
+double & cXml_ParamGraphStereopolis::AngleMinSpeed()
+{
+   return GS_SectionCross().Val().AngleMinSpeed();
+}
+
+const double & cXml_ParamGraphStereopolis::AngleMinSpeed()const 
+{
+   return GS_SectionCross().Val().AngleMinSpeed();
+}
+
+
+double & cXml_ParamGraphStereopolis::DistMinTraj()
+{
+   return GS_SectionCross().Val().DistMinTraj();
+}
+
+const double & cXml_ParamGraphStereopolis::DistMinTraj()const 
+{
+   return GS_SectionCross().Val().DistMinTraj();
+}
+
+
+std::list< std::string > & cXml_ParamGraphStereopolis::ListCam()
+{
+   return GS_SectionCross().Val().ListCam();
+}
+
+const std::list< std::string > & cXml_ParamGraphStereopolis::ListCam()const 
+{
+   return GS_SectionCross().Val().ListCam();
+}
+
+
+cTplValGesInit< cGS_SectionCross > & cXml_ParamGraphStereopolis::GS_SectionCross()
+{
+   return mGS_SectionCross;
+}
+
+const cTplValGesInit< cGS_SectionCross > & cXml_ParamGraphStereopolis::GS_SectionCross()const 
+{
+   return mGS_SectionCross;
+}
+
+
+double & cXml_ParamGraphStereopolis::AngleMaxSpeed()
+{
+   return GS_SectionOverlapingTraj().Val().AngleMaxSpeed();
+}
+
+const double & cXml_ParamGraphStereopolis::AngleMaxSpeed()const 
+{
+   return GS_SectionOverlapingTraj().Val().AngleMaxSpeed();
+}
+
+
+double & cXml_ParamGraphStereopolis::DistMaxTraj()
+{
+   return GS_SectionOverlapingTraj().Val().DistMaxTraj();
+}
+
+const double & cXml_ParamGraphStereopolis::DistMaxTraj()const 
+{
+   return GS_SectionOverlapingTraj().Val().DistMaxTraj();
+}
+
+
+std::list< cOneInterv_OT > & cXml_ParamGraphStereopolis::OneInterv_OT()
+{
+   return GS_SectionOverlapingTraj().Val().OneInterv_OT();
+}
+
+const std::list< cOneInterv_OT > & cXml_ParamGraphStereopolis::OneInterv_OT()const 
+{
+   return GS_SectionOverlapingTraj().Val().OneInterv_OT();
+}
+
+
+cTplValGesInit< cGS_SectionOverlapingTraj > & cXml_ParamGraphStereopolis::GS_SectionOverlapingTraj()
+{
+   return mGS_SectionOverlapingTraj;
+}
+
+const cTplValGesInit< cGS_SectionOverlapingTraj > & cXml_ParamGraphStereopolis::GS_SectionOverlapingTraj()const 
+{
+   return mGS_SectionOverlapingTraj;
+}
+
+void  BinaryUnDumpFromFile(cXml_ParamGraphStereopolis & anObj,ELISE_fp & aFp)
+{
+     BinaryUnDumpFromFile(anObj.NameGrpC(),aFp);
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.GS_SectionLinear().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.GS_SectionLinear().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.GS_SectionLinear().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.GS_SectionCross().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.GS_SectionCross().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.GS_SectionCross().SetNoInit();
+  } ;
+  { bool IsInit;
+       BinaryUnDumpFromFile(IsInit,aFp);
+        if (IsInit) {
+             anObj.GS_SectionOverlapingTraj().SetInitForUnUmp();
+             BinaryUnDumpFromFile(anObj.GS_SectionOverlapingTraj().ValForcedForUnUmp(),aFp);
+        }
+        else  anObj.GS_SectionOverlapingTraj().SetNoInit();
+  } ;
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const cXml_ParamGraphStereopolis & anObj)
+{
+    BinaryDumpInFile(aFp,anObj.NameGrpC());
+    BinaryDumpInFile(aFp,anObj.GS_SectionLinear().IsInit());
+    if (anObj.GS_SectionLinear().IsInit()) BinaryDumpInFile(aFp,anObj.GS_SectionLinear().Val());
+    BinaryDumpInFile(aFp,anObj.GS_SectionCross().IsInit());
+    if (anObj.GS_SectionCross().IsInit()) BinaryDumpInFile(aFp,anObj.GS_SectionCross().Val());
+    BinaryDumpInFile(aFp,anObj.GS_SectionOverlapingTraj().IsInit());
+    if (anObj.GS_SectionOverlapingTraj().IsInit()) BinaryDumpInFile(aFp,anObj.GS_SectionOverlapingTraj().Val());
+}
+
+cElXMLTree * ToXMLTree(const cXml_ParamGraphStereopolis & anObj)
+{
+  XMLPushContext(anObj.mGXml);
+  cElXMLTree * aRes = new cElXMLTree((cElXMLTree *)0,"Xml_ParamGraphStereopolis",eXMLBranche);
+   aRes->AddFils(::ToXMLTree(std::string("NameGrpC"),anObj.NameGrpC())->ReTagThis("NameGrpC"));
+   if (anObj.GS_SectionLinear().IsInit())
+      aRes->AddFils(ToXMLTree(anObj.GS_SectionLinear().Val())->ReTagThis("GS_SectionLinear"));
+   if (anObj.GS_SectionCross().IsInit())
+      aRes->AddFils(ToXMLTree(anObj.GS_SectionCross().Val())->ReTagThis("GS_SectionCross"));
+   if (anObj.GS_SectionOverlapingTraj().IsInit())
+      aRes->AddFils(ToXMLTree(anObj.GS_SectionOverlapingTraj().Val())->ReTagThis("GS_SectionOverlapingTraj"));
+  aRes->mGXml = anObj.mGXml;
+  XMLPopContext(anObj.mGXml);
+  return aRes;
+}
+
+void xml_init(cXml_ParamGraphStereopolis & anObj,cElXMLTree * aTree)
+{
+   if (aTree==0) return;
+   anObj.mGXml = aTree->mGXml;
+
+   xml_init(anObj.NameGrpC(),aTree->Get("NameGrpC",1)); //tototo 
+
+   xml_init(anObj.GS_SectionLinear(),aTree->Get("GS_SectionLinear",1)); //tototo 
+
+   xml_init(anObj.GS_SectionCross(),aTree->Get("GS_SectionCross",1)); //tototo 
+
+   xml_init(anObj.GS_SectionOverlapingTraj(),aTree->Get("GS_SectionOverlapingTraj",1)); //tototo 
+}
+
+std::string  Mangling( cXml_ParamGraphStereopolis *) {return "C81DA2EEDFC08691FB3F";};
+
+eRANSAC_HistoP  Str2eRANSAC_HistoP(const std::string & aName)
+{
+   if (aName=="eR3D")
+      return eR3D;
+   else if (aName=="eR2D")
+      return eR2D;
+   else if (aName=="eNbTypeRHP")
+      return eNbTypeRHP;
+  else
+  {
+      cout << aName << " is not a correct value for enum eRANSAC_HistoP\n" ;
+      ELISE_ASSERT(false,"XML enum value error");
+  }
+  return (eRANSAC_HistoP) 0;
+}
+void xml_init(eRANSAC_HistoP & aVal,cElXMLTree * aTree)
+{
+   aVal= Str2eRANSAC_HistoP(aTree->Contenu());
+}
+std::string  eToString(const eRANSAC_HistoP & anObj)
+{
+   if (anObj==eR3D)
+      return  "eR3D";
+   if (anObj==eR2D)
+      return  "eR2D";
+   if (anObj==eNbTypeRHP)
+      return  "eNbTypeRHP";
+ std::cout << "Enum = eRANSAC_HistoP\n";
+   ELISE_ASSERT(false,"Bad Value in eToString for enum value ");
+   return "";
+}
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eRANSAC_HistoP & anObj)
+{
+      return  cElXMLTree::ValueNode(aNameTag,eToString(anObj));
+}
+
+void  BinaryDumpInFile(ELISE_fp & aFp,const eRANSAC_HistoP & anObj)
+{
+   BinaryDumpInFile(aFp,int(anObj));
+}
+
+void  BinaryUnDumpFromFile(eRANSAC_HistoP & anObj,ELISE_fp & aFp)
+{
+   int aIVal;
+   BinaryUnDumpFromFile(aIVal,aFp);
+   anObj=(eRANSAC_HistoP) aIVal;
+}
+
+std::string  Mangling( eRANSAC_HistoP *) {return "B8F97832255E9CE1FBBF";};
 
 // };

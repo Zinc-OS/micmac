@@ -41,6 +41,31 @@ bool cTriForTiepTri::reprj(cImgForTiepTri * aImg)
             return false;
         }
 }
+//  ============================= **************** =============================
+//  *                             reprj_pure                                   *
+//  ============================= **************** =============================
+bool cTriForTiepTri::reprj_pure(cImgForTiepTri * aImg, Pt2dr & P1, Pt2dr & P2, Pt2dr & P3)
+{
+    Pt3dr Pt1 = mTri3D_.P1();
+    Pt3dr Pt2 = mTri3D_.P2();
+    Pt3dr Pt3 = mTri3D_.P3();
+    if      (
+                  aImg->CamGen()->PIsVisibleInImage(Pt1)
+              &&  aImg->CamGen()->PIsVisibleInImage(Pt2)
+              &&  aImg->CamGen()->PIsVisibleInImage(Pt3)
+            )
+    {
+        P1 = aImg->CamGen()->Ter2Capteur(Pt1);
+        P2 = aImg->CamGen()->Ter2Capteur(Pt2);
+        P3 = aImg->CamGen()->Ter2Capteur(Pt3);
+        return true;
+    }
+    else
+        {
+            return false;
+        }
+}
+
 
 //  ============================= **************** =============================
 //  *                             isCollinear                                  *
@@ -49,8 +74,13 @@ bool isCollinear(Pt3dr & P1, Pt3dr & P2, Pt3dr & P3)
 {
   Pt3dr u = P2-P1; //u
   Pt3dr v = P3-P1; //v
+  /*
   Pt3dr croosPrd(u.x*v.z-u.z*v.y, u.z*v.x-u.x*v.z, u.x*v.y-u.x-v.x);
   if (croosPrd.x < DBL_EPSILON && croosPrd.y < DBL_EPSILON && croosPrd.z < DBL_EPSILON)
+     return true;
+     */
+  Pt3dr croosPrd(u.y*v.z-u.z*v.y, u.z*v.x-u.x*v.z, u.x*v.y-u.y-v.x);
+  if (croosPrd.x == 0 && croosPrd.y == 0 && croosPrd.z == 0)
      return true;
   else
      return false;
@@ -63,17 +93,22 @@ double cTriForTiepTri::valElipse(int & aNInter)
 {
     if (!mrprjOK || mNumImg == -1)
     {
-        cout<<"Projection error !"<<endl;
+        if (aNInter!=0) {cout<<"Projection error !"<<endl;}
         return -1.0;
     }
     else
     {
         double aSurf =  (mPt1-mPt2) ^ (mPt1-mPt3);
+        if(this->mAppli->ZBuf_InverseOrder())
+        {
+            aSurf=-aSurf;
+        }
+        //cout<<"SUFFFFFFFF "<<aSurf<<endl;
         Pt3dr Pt1 = mTri3D_.P1();
         Pt3dr Pt2 = mTri3D_.P2();
         Pt3dr Pt3 = mTri3D_.P3();
         bool isColnr = isCollinear(Pt1, Pt2, Pt3);  //si 3 point du triangle sont collinears
-        if (-aSurf > TT_SEUIL_SURF_TRIANGLE && mrprjOK && !isColnr)
+        if (-aSurf > mAppli->SEUIL_SURF_TRIANGLE() && mrprjOK && !isColnr)
         {
         //creer plan 3D local contient triangle
             cElPlan3D * aPlanLoc = new cElPlan3D(Pt1, Pt2, Pt3);    //ATTENTION : peut causer error vuunit si 3 point collinear
@@ -162,6 +197,14 @@ if (aDisc <0)
         }
         else
         {
+            if (isColnr && aNInter!=0)
+                {
+                    cout<<Pt1<<Pt2<<Pt3<<" => 3 Pts tri collinear !"<<endl;
+                }
+            if (-aSurf < mAppli->SEUIL_SURF_TRIANGLE() && aNInter!=0)
+                {
+                    cout<<Pt1<<Pt2<<Pt3<<"Surface tri too small !"<<endl;
+                }
             mrprjOK = false;
             return -1.0;
         }

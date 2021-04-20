@@ -384,8 +384,8 @@ std::vector<Pt3dr> cProj4::Chang(const std::vector<Pt3dr> & aPtsIn, bool Sens2Ge
 
    std::string aTmpOut = "Proj4Output" + GetUnikId() + ".txt";
 
-   std::string aCom =    std::string( std::string(SYS_CAT) + " " + aTmpIn + " | ")
-						   + g_externalToolHandler.get("proj").callName() + (Sens2GeoC?" -I ":" ")
+   std::string aCom =    std::string( std::string(SYS_CAT) + " " + aTmpIn + " | ") + "\""
+						   + g_externalToolHandler.get("proj").callName() + "\"" + (Sens2GeoC?" -I ":" ")
 						   + std::string(" -f %.7f ")
 						   + mStr
 						   + " > " 
@@ -403,7 +403,7 @@ std::vector<Pt3dr> cProj4::Chang(const std::vector<Pt3dr> & aPtsIn, bool Sens2Ge
    {
          Pt3dr aP;
          int aNb = sscanf(aLine,"%lf %lf %lf",&aP.x,&aP.y,&aP.z);
-         std::cout << " ap " << aNb << " " << aP << std::endl;
+         //std::cout << " ap " << aNb << " " << aP << std::endl;
          ELISE_ASSERT(aNb==3,"Bad Nb value in cProj4::Chang, internal error");
          if (Sens2GeoC)
          {
@@ -921,6 +921,23 @@ std::vector<double>  VecCorrecUnites(const std::vector<double> & aV,const std::v
    return aRes;
 }
 
+cSysCoord * cSysCoord::RTL(Pt3d<double> const& aGOri)  // Origine Geocentrique
+{
+   cSysCoord * aSW = cSysCoord::WGS84();
+
+   Pt3dr aWOri  = aSW->FromGeoC(aGOri);  // Origine WGS4 pour calculer le plan tanget
+
+   Pt3dr  aU = WGS84()->OdgEnMetre();
+   Pt3dr  aDirX = vunit(aSW->ToGeoC(aWOri+Pt3dr(1/aU.x,0,0))-aGOri);
+   Pt3dr  aDirY = vunit(aSW->ToGeoC(aWOri+Pt3dr(0,1/aU.y,0))-aGOri);
+   Pt3dr  aDirZ = vunit(aSW->ToGeoC(aWOri+Pt3dr(0,0,1/aU.z))-aGOri);
+
+   aDirY = vunit(aDirZ ^aDirX);
+   aDirX = vunit(aDirY ^aDirZ);
+
+    cGeoc_RTL * aRes = new cGeoc_RTL(aGOri,aDirX,aDirY,aDirZ);
+    return aRes;
+}
 
 cSysCoord * cSysCoord::FromXML
                         (
@@ -1022,10 +1039,16 @@ cSysCoord * cSysCoord::FromXML
         double aZ =  aV[2];
 
         aVBSC++; aNbB--;
-        cSysCoord * aSRtl = cSysCoord::FromXML(aVBSC,aNbB,aDir);
+        Pt3dr aGOri;
+        {
+            cSysCoord * aSRtl = cSysCoord::FromXML(aVBSC,aNbB,aDir);
+            aGOri =  aSRtl->ToGeoC(Pt3dr(aX,aY,aZ));
+            aSRtl->Delete();
+        }
+        cSysCoord * aRes =  cGeoc_RTL::RTL(aGOri);  // Origine Geocentrique
+/*
         cSysCoord * aSW = cSysCoord::WGS84();
 
-        Pt3dr aGOri =  aSRtl->ToGeoC(Pt3dr(aX,aY,aZ));
         Pt3dr aWOri  = aSW->FromGeoC(aGOri);
 
         Pt3dr  aU = WGS84()->OdgEnMetre();
@@ -1035,6 +1058,9 @@ cSysCoord * cSysCoord::FromXML
 
         aDirY = vunit(aDirZ ^aDirX);
         aDirX = vunit(aDirY ^aDirZ);
+
+        cGeoc_RTL * aRes = new cGeoc_RTL(aGOri,aDirX,aDirY,aDirZ);
+*/
 /*
    NE PAS EFFACER AVANT 2013 !! Version ancienne , tangente au system de codage de l'origine
    remplacer par tgt au WGS84
@@ -1055,23 +1081,9 @@ cSysCoord * cSysCoord::FromXML
         // double aEpsInit = 1e-5; 
 
 
-        cGeoc_RTL * aRes = new cGeoc_RTL(aGOri,aDirX,aDirY,aDirZ);
 
 
-        if (0)
-        {
-            Pt3dr anOri2 =  aSRtl->ToGeoC(Pt3dr(aX,aY,aZ+1));
-            Pt3dr anOriX =  aSRtl->ToGeoC(Pt3dr(aX+1/aU.x,aY,aZ));
-            Pt3dr anOriY =  aSRtl->ToGeoC(Pt3dr(aX,aY+1/aU.y,aZ));
 
-            std::cout << "RTL2" << aRes->FromGeoC(aGOri) <<  " " 
-                                << aRes->FromGeoC(anOri2) 
-                                << aRes->FromGeoC(anOriX) 
-                                << aRes->FromGeoC(anOriY) << "\n";
-            getchar();
-        }
-
-        aSRtl->Delete();
         return aRes;
    }
 
@@ -1554,6 +1566,30 @@ cChSysCo::~cChSysCo()
         Pt3dr Loc2GeoC(const Pt3dr & ) const;
         Pt3dr Loc2GeoC(const Pt2dr & ) const;
 */
+
+
+/*************************************************/
+/*                                               */
+/*               cTransfo3D                      */
+/*                                               */
+/*************************************************/
+
+cTransfo3D * cTransfo3D::Alloc(const std::string & aName,const std::string & aDir) 
+{
+    if (ELISE_fp::exist_file(aDir+aName) && IsPostfixedBy(aName,"xml"))
+    {
+         cXml_ParamBascRigide  *  aXBR = OptStdGetFromPCP(aDir+aName,Xml_ParamBascRigide);
+         if (aXBR)
+         {
+            cSolBasculeRig * aRes = new cSolBasculeRig(Xml2EL(*aXBR));
+
+            delete aXBR;
+            return aRes;
+         }
+    }
+    return  cChSysCo::Alloc(aName,aDir);
+}
+
 
 
 

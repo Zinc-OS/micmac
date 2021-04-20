@@ -387,6 +387,7 @@ class ElPackHomologue : public cPackNupletsHom
      bool  mSolveInL1;
 
      public :
+         Box2dr BoxP1() const;
          ElPackHomologue();
          void SelfSwap(); // Intervertit les  2
          void ApplyHomographies
@@ -492,7 +493,7 @@ class ElPackHomologue : public cPackNupletsHom
           void SetProfondeur(ElRotation3D & aR,double aProf) const;
           double Profondeur(const ElRotation3D & aR) const;
               void InvY(Pt2dr aSzIm1,Pt2dr aSzIm2);
-
+          void Resize(double aRatioIm1, double aRatioIm2);
               // Dist moy des intersections
           double AngularDistInter(const ElRotation3D & aR) const;
 
@@ -655,6 +656,10 @@ class ElProjStenope : public ElProj32 ,
 class ElDistortion22_Gen
 {
      public :
+       // Rustine car les camera fraser basic ne savent s'esporter qu'avec leur camera  ToXmlStruct
+        ElCamera * CameraOwner();
+        void SetCameraOwner(ElCamera*);
+
         virtual cCalibDistortion ToXmlStruct(const ElCamera *) const;
         void SetName(const char * aName);
         virtual std::string Type() const;
@@ -779,7 +784,24 @@ private :
 protected :
         const char * mName;
 private :
+        ElCamera * mCameraOwner;
 };
+
+
+class cCamAsMap : public cElMap2D
+{
+    public :
+        virtual int Type() const ;
+        cCamAsMap(CamStenope * aCam,bool Direct);
+        virtual Pt2dr operator () (const Pt2dr & p) const ;
+        virtual cElMap2D * Map2DInverse() const;
+        virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
+
+    private :
+           CamStenope *           mCam;
+           bool                   mDirect;
+};
+
 
 class cXmlAffinR2ToR;
 
@@ -826,10 +848,23 @@ class cElComposHomographie
 
 class cXmlHomogr;
 
-class cElHomographie
+class cElHomographie  : public cElMap2D
 {
      public :
+          Pt2dr operator() (const Pt2dr & aP) const;
+          virtual int Type() const ;
+          virtual  cElMap2D * Map2DInverse() const;
+          virtual cElMap2D * Duplicate() ;
+          virtual cElMap2D * Identity() ;
+          virtual cXml_Map2D    ToXmlGen() ; // Peuvent renvoyer 0
+   
+          virtual int   NbUnknown() const;
+          virtual void  AddEq(Pt2dr & aCste,std::vector<double> & EqX,std::vector<double> & EqY,const Pt2dr & aP1,const Pt2dr & aP2 ) const;
+          virtual void  InitFromParams(const std::vector<double> &aSol);
+          virtual std::vector<double> Params() const;
+
           bool HasNan() const;
+
           Pt2dr Direct  (const Pt2dr & aP) const;
           Pt2d<Fonc_Num> Direct (Pt2d<Fonc_Num> ) const;
 
@@ -1167,6 +1202,14 @@ class ElDistortionPolynomiale : public ElDistortion22_Gen
 class EpipolaireCoordinate : public ElDistortion22_Gen
 {
     public :
+         void SaveOrientEpip
+              (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aNameIm,
+                  const std::string &                aNameOther
+               ) const;
+
 
         // Lorsque aParal ballaye R, on obtient
         // la courbe epipolaire passant par aP
@@ -1316,6 +1359,14 @@ class PolynomialEpipolaireCoordinate : public EpipolaireCoordinate
 class CpleEpipolaireCoord
 {
     public :
+         void SaveOrientCpleEpip
+              (
+                  const std::string &                anOri,
+                  cInterfChantierNameManipulateur *  anICNM,
+                  const std::string &                aName1,
+                  const std::string &                aName2
+               ) const;
+
 
             static CpleEpipolaireCoord * EpipolaireNoDist
                    (Pt2dr aPHom1,Pt2dr aPHom2,Pt2dr aDir1,Pt2dr aDir2);
@@ -1327,7 +1378,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue &,
                                                 INT   aDegre,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
             static CpleEpipolaireCoord * PolynomialFromHomologue
                                         (
@@ -1336,7 +1388,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue & lHL2,
                                                 INT   aDegreL2,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
 
             static CpleEpipolaireCoord * PolynomialFromHomologue
@@ -1347,7 +1400,8 @@ class CpleEpipolaireCoord
                                                 const ElPackHomologue &,
                                                 INT   aDegre,
                                                 Pt2dr aDir1,
-                                                Pt2dr aDir2
+                                                Pt2dr aDir2,
+                                                int   aDeltaDeg=2
                                         );
 
 
@@ -1379,8 +1433,10 @@ class CpleEpipolaireCoord
                                           );
 
             ~CpleEpipolaireCoord();
-            EpipolaireCoordinate & EPI1();
-            EpipolaireCoordinate & EPI2();
+            const EpipolaireCoordinate & EPI1() const;
+            const EpipolaireCoordinate & EPI2() const;
+            EpipolaireCoordinate & EPI1() ;
+            EpipolaireCoordinate & EPI2() ;
 
             Pt2dr Hom12(Pt2dr,Pt2dr aParalaxe); // x=> paralaxe, y variation de colonne
             Pt2dr Hom12(Pt2dr,REAL aParalaxe);
@@ -1457,6 +1513,7 @@ class cArgOptionalPIsVisibleInImage
        cArgOptionalPIsVisibleInImage();
 
        bool   mOkBehind;
+       std::string  mWhy;
 };
 
 class cBasicGeomCap3D
@@ -1474,7 +1531,7 @@ class cBasicGeomCap3D
       virtual bool  CaptHasData(const Pt2dr &) const = 0;
       //  Def return true, mean that the geometry is ok independently of the image data
       virtual bool  CaptHasDataGeom(const Pt2dr &) const ;
-      virtual bool     PIsVisibleInImage   (const Pt3dr & aP,const cArgOptionalPIsVisibleInImage * =0) const =0;
+      virtual bool     PIsVisibleInImage   (const Pt3dr & aP,cArgOptionalPIsVisibleInImage * =0) const =0;
       // Can be very approximate, using average depth or Z
       virtual Pt3dr RoughCapteur2Terrain   (const Pt2dr & aP) const =0;
 
@@ -1502,7 +1559,7 @@ class cBasicGeomCap3D
       virtual double ProfondeurDeChamps(const Pt3dr & aP) const;
       virtual Pt3dr DirVisee() const;
 
-       double  EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D & aCam2,const Pt2dr & aP2) const;
+       double  EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D & aCam2,const Pt2dr & aP2,Pt2dr * SauvDir=0) const;
 
 
        virtual double ResolutionAngulaire() const;  // OO
@@ -1618,7 +1675,7 @@ class ElCamera : public cCapture3D
          double GetVeryRoughInterProf() const;
          bool  CaptHasData(const Pt2dr &) const ;
          Pt2dr    Ter2Capteur   (const Pt3dr & aP) const;
-         bool     PIsVisibleInImage   (const Pt3dr & aP,const cArgOptionalPIsVisibleInImage * =0) const ;
+         bool     PIsVisibleInImage   (const Pt3dr & aP,cArgOptionalPIsVisibleInImage * =0) const ;
          ElSeg3D  Capteur2RayTer(const Pt2dr & aP) const;
          double ResolImRefFromCapteur() const ;
          bool  HasRoughCapteur2Terrain() const ;
@@ -1648,7 +1705,7 @@ class ElCamera : public cCapture3D
          cVerifOrient MakeVerif( int aNbVerif,double aProf,const char *,const Pt3di  * aNbDeterm=0) const;
          cOrientationConique  StdExportCalibGlob(bool Matr) const;
          cOrientationConique  StdExportCalibGlob() const;
-         std::string StdExport2File(cInterfChantierNameManipulateur *,const std::string & aDirOri,const std::string & aNameIm);  // Test -> Ori-R
+         std::string StdExport2File(cInterfChantierNameManipulateur *,const std::string & aDirOri,const std::string & aNameIm,const std::string & aFileInterne = "");  // Test -> Ori-R
 
       virtual  Pt3dr ImEtProf2Terrain(const Pt2dr & aP,double aZ) const = 0;
       virtual  Pt3dr NoDistImEtProf2Terrain(const Pt2dr & aP,double aZ) const = 0;
@@ -1709,6 +1766,8 @@ class ElCamera : public cCapture3D
           const ElRotation3D & Orient() const;
 
           void SetOrientation(const ElRotation3D &);
+          void AddToCenterOptical(const Pt3dr & aOffsetC);
+          void MultiToRotation(const ElMatrix<double> & aOffsetR);
 
           Pt3dr  PseudoInter(Pt2dr aPF2A,const ElCamera & CamB,Pt2dr aPF2B,double * aD=0) const;
           // Idem PseudoInter mais la precision est celle de reprojection
@@ -1827,7 +1886,7 @@ class ElCamera : public cCapture3D
                const std::vector<bool> &  isDirect,
                const std::vector<ElDistortion22_Gen *> &
            );
-      Pt2dr DComplC2M(Pt2dr  ) const;
+      Pt2dr DComplC2M(Pt2dr,bool UseTrScN = true  ) const;
       Pt2dr DComplM2C(Pt2dr,bool UseTrScN = true  ) const;
           Pt2dr NormC2M(Pt2dr aP) const;
           Pt2dr NormM2C(Pt2dr aP) const;
@@ -2051,6 +2110,18 @@ class cDistPrecond2SinAtgtS2 : public cDistPrecondRadial
         int     Mode() const ;
 };
 
+class cDistPrecondSterographique : public cDistPrecondRadial
+{
+      public :
+         cDistPrecondSterographique(double aFocApriori,const Pt2dr & aCentre);
+      private :
+        double  DerMultDirect(const double & ) const ;
+        double  MultDirect(const double & ) const ;
+        double  MultInverse(const double & ) const ;
+        int     Mode() const ;
+};
+
+
 
 class cElDistFromCam : public ElDistortion22_Gen
 {
@@ -2244,6 +2315,7 @@ class CamStenope : public ElCamera
      Pt3dr ImEtZ2Terrain(const Pt2dr & aP,double aZ) const;
      void  Coins(Pt3dr &aP1, Pt3dr &aP2, Pt3dr &aP3, Pt3dr &aP4, double aZ) const;
      void  CoinsProjZ(Pt3dr &aP1, Pt3dr &aP2, Pt3dr &aP3, Pt3dr &aP4, double aZ) const;
+     Box2dr BoxTer(double aZ) const;
 
          Pt3dr  ImEtProfSpherik2Terrain(const Pt2dr & aPIm,const REAL & aProf) const; //OO
          Pt3dr  ImDirEtProf2Terrain(const Pt2dr & aPIm,const REAL & aProf,const Pt3dr & aNormPl) const; //OO
@@ -2790,6 +2862,7 @@ class cMirePolygonEtal
           bool IsNegatif() const;
           cMirePolygonEtal();
           static const cMirePolygonEtal & IgnMireN6();
+          static const cMirePolygonEtal & ENSGMireN6();
           static const cMirePolygonEtal & MtdMire9();
           static const cMirePolygonEtal & IGNMire7();
           static const cMirePolygonEtal & IGNMire5();
@@ -2807,6 +2880,7 @@ class cMirePolygonEtal
       private :
 
           static const double TheIgnN6[6];
+          static const double TheENSG6[6];
           static const double TheMTD9[6];
           static const double TheIGNDiams7[7];
           static const double TheIGNDiams5[5];
@@ -2817,6 +2891,7 @@ class cMirePolygonEtal
           static const double TheDiamMTClous1[1];
 
           static cMirePolygonEtal TheNewIGN6;
+          static cMirePolygonEtal TheNewENSG6;
           static cMirePolygonEtal TheMTDMire9;
           static cMirePolygonEtal TheIGNMire7;
           static cMirePolygonEtal TheIGNMire5;

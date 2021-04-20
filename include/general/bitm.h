@@ -627,6 +627,8 @@ template <class Type,class TyBase> class Im2D : public Im2DGen
       void substract(const Type &aB);
       void ramp(const Type &aMin, const Type &aK);
 
+      void bitwise_add(Im2D<Type,TyBase> & aIm, Im2D<Type,TyBase> & aImOut);
+
    private :
       DataIm2D<Type,TyBase> * di2d(){return (DataIm2D<Type,TyBase> *) (_ptr);}
       const DataIm2D<Type,TyBase> * di2d() const {return (DataIm2D<Type,TyBase> *) (_ptr);}
@@ -1319,6 +1321,8 @@ ElRotation3D RotationOfInvariantPoint(const Pt3dr & ,const ElMatrix<double> &);
 ElMatrix<REAL> VecKern ( const ElMatrix<REAL> & aMat);
 ElMatrix<REAL> VecOfValP(const ElMatrix<REAL> & aMat,REAL aVP);
 Pt3dr AxeRot(const ElMatrix<REAL> & aMat);
+double TetaOfAxeRot(const ElMatrix<REAL> & aMat, Pt3dr & aP1);
+
 
 double LongBase(const ElRotation3D &);
 ElRotation3D ScaleBase(const ElRotation3D &,const double & aScale); // Passer 1/LongBase pour faire base unit
@@ -1326,6 +1330,7 @@ ElRotation3D ScaleBase(const ElRotation3D &,const double & aScale); // Passer 1/
 
 double ProfFromCam(const ElRotation3D & anOr,const Pt3dr & aP);  // anOr M->C
 
+ElRotation3D AverRotation(const std::vector<ElRotation3D> & aVRot,const std::vector<double> & aVWeights);
 
 void SauvFile(const ElRotation3D &,const std::string &);
 void XML_SauvFile(const ElRotation3D &,const std::string &,const std::string & aNameEngl,bool aModeMatr);
@@ -1349,6 +1354,7 @@ template <class Type>  class ElPolynome
           ElPolynome<Type> operator * (const ElPolynome<Type> &) const;
           ElPolynome<Type> operator + (const ElPolynome<Type> &) const;
           ElPolynome<Type> operator - (const ElPolynome<Type> &) const;
+
 
           void self_deriv() ;
           ElPolynome deriv() const;
@@ -1378,6 +1384,8 @@ template <class Type>  class ElPolynome
       static const Type  El0;
       static const Type  El1;
 };
+
+ElPolynome<double> LeasSqFit(vector<Pt2dr> Samples,int aDeg=-1,const std::vector<double> * aPds = 0);
 
 template <class Type> void  RealRootsOfRealPolynome
      (

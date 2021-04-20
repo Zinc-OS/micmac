@@ -57,9 +57,14 @@ class  cReadOri : public cReadObject
                mInc3(-1,-1,-1),
                mInc (-1)
         {
+
               AddString("N",&mName,true);
               AddPt3dr("XYZ",&mPt,true);
               AddPt3dr("WPK",&mWPK,false);
+              AddDouble("Ix",&mInc3.x,false);
+              AddDouble("Iy",&mInc3.y,false);
+              AddDouble("Iz",&mInc3.z,false);
+              AddDouble("T",&mTime,false);
         }
 
         std::string mName;
@@ -67,6 +72,7 @@ class  cReadOri : public cReadObject
         Pt3dr       mWPK;
         Pt3dr       mInc3;
         double      mInc;
+        double      mTime;
 };
 
 
@@ -100,7 +106,8 @@ class cAttrVoisSom
 {
     public :
        cAttrVoisSom(cTxtCam * aCam) :
-              mCam (aCam)
+              mCam (aCam),
+              mFC (0)
        {
        }
 
@@ -191,7 +198,7 @@ class cAppli_Ori_Txt2Xml_main
          void SauvOriFinal();
          void OnePasseElargV(int aK0, int aK1, int aStep);
          void SauvRel();
-         void InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK);
+         void InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK,Pt3dr anInc,double aTime);
 
          void InitGrapheVois();
          void VoisInitDelaunay();
@@ -287,11 +294,12 @@ class cAppli_Ori_Txt2Xml_main
          bool                 mCalibByFile;
          double               mAltiSol;
          double               mProf;
-         Pt2dr                mOffsetXY;
+         Pt3dr                mOffsetXYZ;
          std::string         mGenOrFromC;
          bool                mComputeOrFromC;
          bool                mComputeCple;
          bool                mAcceptNonExitsingImage;
+         std::string         mFileNonExist;
 };
 
 void cAppli_Ori_Txt2Xml_main::operator()(tSomVois* aS1,tSomVois* aS2,bool)  // Delaunay Call back
@@ -507,7 +515,7 @@ void cAppli_Ori_Txt2Xml_main::CalcVitesse()
     }
 
 
-    for (int aKS =0 ; aKS<int(aVSom.size()-4) ; aKS+=4)
+    for (int aKS =0 ; aKS+4<int(aVSom.size()) ; aKS+=4)  // aKS < VS-4 => donne un warn
     {
          for (int aKS1 = aKS ; aKS1<(aKS+4) ; aKS1++)
          {
@@ -647,7 +655,7 @@ void cAppli_Ori_Txt2Xml_main::CalcVitesse()
                  if (mTetaFromCap)
                     aWPK = Pt3dr(0,0, angle(Pt2dr(aV.x,aV.y)) * (180/PI) -80);
 
-                 InitCamera(*aCam,aC,aWPK);
+                 InitCamera(*aCam,aC,aWPK,Pt3dr(-1,-1,-1),-1);
              }
          }
      }
@@ -694,7 +702,7 @@ cAppli_Ori_Txt2Xml_main::cAppli_Ori_Txt2Xml_main(int argc,char ** argv) :
     mLine            (5),
     mConvOri         (eConvAngPhotoMDegre),
     mCalibByFile     (true),
-    mOffsetXY        (0,0),
+    mOffsetXYZ        (0,0,0),
     mGenOrFromC      (),
     mComputeOrFromC  (false),
     mAcceptNonExitsingImage  (false)
@@ -754,12 +762,16 @@ cAppli_Ori_Txt2Xml_main::cAppli_Ori_Txt2Xml_main(int argc,char ** argv) :
                       << EAM(mCalibByFile,"CBF",true,"Export calib as a link to existing file")
                       << EAM(mAltiSol,"AltiSol",true,"Average altitude of ground")
                       << EAM(mProf,"Prof",true,"Average Prof of images")
-                      << EAM(mOffsetXY,"OffsetXY",true,"Offset to substract from X,Y (To avoid possible round off error)")
+                      << EAM(mOffsetXYZ,"OffsetXYZ",true,"Offset to substract from X,Y,Z (To avoid possible round off error)")
 
                       << EAM(mGenOrFromC,"CalOFC",true,"When specified compute initial orientation from centers (in Ori-GenFromC) Ori-${CalOFC}, must contains internal calibrations")
                       << EAM(mAcceptNonExitsingImage,"OkNoIm",true,"Do not create error if image does not exist (def = false)")
+                      << EAM(mFileNonExist,"FNI",true,"File to Create when non exist")
                       << EAM(mSzV,"SzW",true,"Size for visualisation")
     );
+
+    // It seems normal to non existing when it is automatically corrected  (else why ?)
+    mAcceptNonExitsingImage = mAcceptNonExitsingImage || EAMIsInit(&mFileNonExist);
 
     if (MMVisualMode) return;
 
@@ -973,7 +985,7 @@ void cAppli_Ori_Txt2Xml_main::VoisInitDelaunayCroist()
     // std::cout << "Viiissuu "<< mBoxC.sz() << " " << mScaleV << "\n"; getchar();
 }
 
-void  cAppli_Ori_Txt2Xml_main::InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK)
+void  cAppli_Ori_Txt2Xml_main::InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK,Pt3dr anInc,double aTime)
 {
     const cElDate & aDate =   aCam.mMTD->Date(true);
     const cElDate & aDate0 =   mVCam[0]->mMTD->Date(true);
@@ -983,6 +995,8 @@ void  cAppli_Ori_Txt2Xml_main::InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK)
     {
        aCam.mOC->Externe().Centre() = aC;
        aCam.mTime =  (mMTDOnce | allDateUnInit)  ? aCam.mNum : aCam.mMTD->Date().DifInSec(mVCam[0]->mMTD->Date()) ;
+       if (aTime > 0)
+           aCam.mTime = aTime;
 
        aCam.mOC->Externe().Time().SetVal(aCam.mTime);
        aCam.mC = aC;
@@ -1005,6 +1019,10 @@ void  cAppli_Ori_Txt2Xml_main::InitCamera(cTxtCam & aCam,Pt3dr  aC,Pt3dr  aWPK)
     {
         aCam.mOC->Externe().Profondeur().SetVal(mProf);
         aCam.mOC->Externe().AltiSol().SetValIfNotInit(aC.z-mProf);
+    }
+    if ((anInc.x>0) || (anInc.y>0) || (anInc.z>0))
+    {
+         aCam.mOC->Externe().IncCentre().SetVal(anInc);
     }
     MakeFileXML(*(aCam.mOC),mDir+aCam.mNameOri);
     aCam.mCam = CamOrientGenFromFile(aCam.mNameOri,mICNM);
@@ -1031,6 +1049,7 @@ void cAppli_Ori_Txt2Xml_main::ParseFile()
         std::string aNameIm;
         if (aReadApp.Decode(aLine) && (aCpt>=mCptMin) && (aCpt<mCptMax))
         {
+
              aNameIm =  mICNM->Assoc1To1(mKeyName2Image,aReadApp.mName,true);
              if (! ELISE_fp::exist_file(aNameIm))
              {
@@ -1038,6 +1057,11 @@ void cAppli_Ori_Txt2Xml_main::ParseFile()
                    if (!mAcceptNonExitsingImage)
                    {
                         ELISE_ASSERT(false,"This image does not exist");
+                   }
+                   else if (EAMIsInit(&mFileNonExist))
+                   {
+                      Ok=true;
+                      ELISE_fp::CpFile(mFileNonExist,aNameIm);
                    }
              }
              else
@@ -1049,11 +1073,11 @@ void cAppli_Ori_Txt2Xml_main::ParseFile()
 
         if (Ok)
         {
-
-           if (aReadApp.IsDef(aReadApp.mPt) && (EAMIsInit(&mOffsetXY)))
+           if (aReadApp.IsDef(aReadApp.mPt) && (EAMIsInit(&mOffsetXYZ)))
            {
-              aReadApp.mPt.x -= mOffsetXY.x;
-              aReadApp.mPt.y -= mOffsetXY.y;
+              aReadApp.mPt.x -= mOffsetXYZ.x;
+              aReadApp.mPt.y -= mOffsetXYZ.y;
+              aReadApp.mPt.z -= mOffsetXYZ.z;
            }
            {
               if (mNbCam==0)
@@ -1105,7 +1129,13 @@ void cAppli_Ori_Txt2Xml_main::ParseFile()
            Pt3dr aC =  aReadApp.mPt;
            if (mCSC)
               aC = mCSC->Src2Cibl(aC);
-           InitCamera(aNewCam,aC,mHasWPK  ? aReadApp.mWPK :Pt3dr(0,0,0));
+// std::cout << "DEFINNCCCCC " << aReadApp.IsDef(aReadApp.mInc3.x) << "\n";
+           double aIx = aReadApp.IsDef(aReadApp.mInc3.x) ? aReadApp.mInc3.x : -1;
+           double aIy = aReadApp.IsDef(aReadApp.mInc3.y) ? aReadApp.mInc3.y : -1;
+           double aIz = aReadApp.IsDef(aReadApp.mInc3.z) ? aReadApp.mInc3.z : -1;
+           double aTime = aReadApp.IsDef(aReadApp.mTime) ? aReadApp.mTime : - 1;
+   
+           InitCamera(aNewCam,aC,mHasWPK  ? aReadApp.mWPK :Pt3dr(0,0,0),Pt3dr(aIx,aIy,aIz),aTime);
            aNewCam.mPrio = aNewCam.mTime ;// + aNewCam.mNum * 1e-7;
 
 
@@ -1605,6 +1635,7 @@ int OriExport_main(int argc,char ** argv)
     bool AddFormat=false;
     bool onlyC=false;
     bool onlyA=false;
+    Pt3dr LA;
     std::string aModeExport="WPK";
     std::string aFormat ="N W P K X Y Z";
     // eExportOri aModeEO = eEO_WPK;
@@ -1612,12 +1643,13 @@ int OriExport_main(int argc,char ** argv)
     ElInitArgMain
     (
         argc,argv,
-        LArgMain()  << EAMC(aFullName,"Full Directory (Dir+Pattern)", eSAM_IsPatFile)
-                    << EAMC(aRes,"Results"),
+        LArgMain()  << EAMC(aFullName,"Full Directory (Dir+Pattern) of xml orientation file", eSAM_IsPatFile)
+                    << EAMC(aRes,"Txt file name for results of export"),
         LArgMain()  << EAM(AddFormat,"AddF",true,"Add format as first line of header, def= false",eSAM_IsBool)
                     << EAM(aModeExport,"ModeExp",true,"Mode export, def=WPK (Omega Phi Kapa)",eSAM_None,ListOfVal(eEO_NbVals,"eEO_"))
                     << EAM(onlyC,"OnlyCenters",true,"Export only camera centers, def=false",eSAM_IsBool)
                     << EAM(onlyA,"OnlyAngles",true,"Export only camera angles, def=false",eSAM_IsBool)
+                    << EAM(LA,"LA",true,"Lever-Arm, if provided, export camera center and camera-center corrected for LeverArm")
     );
 
     eExportOri aModeEO;
@@ -1626,14 +1658,17 @@ int OriExport_main(int argc,char ** argv)
 
     eConventionsOrientation aCO = eConvAngPhotoMDegre;
     if (aModeEO==eEO_WPK)
-       aCO = eConvAngPhotoMDegre;
-    else if (aModeH==eEO_AMM)
-       aCO = eConvApero_DistM2C;
-    else
+           aCO = eConvAngPhotoMDegre;
+        else if (aModeH==eEO_AMM)
+           aCO = eConvApero_DistM2C;
+	else if (aModeEO==eEO_MMM)
+		aCO = eConvApero_DistM2C;
+	else
     {
         ELISE_ASSERT(false,"unsupported mode of conv or");
     }
 
+    if (EAMIsInit(&LA)) aFormat ="N W P K X Y Z Xla Yla Zla";
 
     if (!MMVisualMode)
     {
@@ -1647,16 +1682,52 @@ int OriExport_main(int argc,char ** argv)
             const std::string & aNameCam =  (*aEASF.SetIm())[aK];
             std::string aNameIm = aEASF.mICNM->Assoc1To1("NKS-Assoc-Ori2ImGen",aNameCam,true);
             CamStenope * aCS =  CamOrientGenFromFile(aNameCam,aEASF.mICNM);
-            // std::cout << "IM = " << aNameCam  << " " << aCS->Focale() << "\n";
-            Pt3dr aA = TestInvAngles(aCO,aCS->Orient().Mat());
-            Pt3dr aC = aCS->PseudoOpticalCenter();
-			if(!onlyC && onlyA)
-				fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aA.x,aA.y,aA.z);
-			else if(onlyC && !onlyA)
-				fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aC.x,aC.y,aC.z);
-			else
-				fprintf(aFP,"%s %lf %lf %lf %lf %lf %f\n",aNameIm.c_str(),aA.x,aA.y,aA.z,aC.x,aC.y,aC.z);
-        }
+            //	std::cout << "IM = " << aNameCam  << " " << aCS->Focale() << " " << aModeEO <<"\n";
+
+
+			if (aModeEO==eEO_WPK)
+			{
+				Pt3dr aA = TestInvAngles(aCO,aCS->Orient().Mat());
+                Pt3dr aC = aCS->PseudoOpticalCenter();
+				if(!onlyC && onlyA)
+					fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aA.x,aA.y,aA.z);
+				else if(onlyC && !onlyA)
+					fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aC.x,aC.y,aC.z);
+                else if (EAMIsInit(&LA)){
+    
+                    Pt3dr aCla; // center corrected for Lever-Arm
+                    aCla=aC-aCS->Orient().Mat()*LA;
+                    fprintf(aFP,"%s %lf %lf %lf %lf %lf %f %f %f %f\n",aNameIm.c_str(),aA.x,aA.y,aA.z,aC.x,aC.y,aC.z,aCla.x,aCla.y,aCla.z);
+                }
+                else
+					fprintf(aFP,"%s %lf %lf %lf %lf %lf %f\n",aNameIm.c_str(),aA.x,aA.y,aA.z,aC.x,aC.y,aC.z);
+        
+			}
+			else if (aModeEO==eEO_MMM)
+			{
+				Pt3dr aC = aCS->PseudoOpticalCenter();
+				
+				if(onlyC && !onlyA)
+				{
+					fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aC.x,aC.y,aC.z);
+				}
+				else if (!onlyC && onlyA)
+				{
+					fprintf(aFP,"%s\n",aNameIm.c_str());
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(0,0),aCS->Orient().Mat()(0,1),aCS->Orient().Mat()(0,2));
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(1,0),aCS->Orient().Mat()(1,1),aCS->Orient().Mat()(1,2));
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(2,0),aCS->Orient().Mat()(2,1),aCS->Orient().Mat()(2,2));
+				
+				}	
+				else
+				{
+					fprintf(aFP,"%s %lf %lf %lf\n",aNameIm.c_str(),aC.x,aC.y,aC.z);
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(0,0),aCS->Orient().Mat()(0,1),aCS->Orient().Mat()(0,2));
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(1,0),aCS->Orient().Mat()(1,1),aCS->Orient().Mat()(1,2));
+					fprintf(aFP,"%.9f %.9f %.9f\n",aCS->Orient().Mat()(2,0),aCS->Orient().Mat()(2,1),aCS->Orient().Mat()(2,2));
+				}
+			}
+		}
 
         fclose(aFP);
 

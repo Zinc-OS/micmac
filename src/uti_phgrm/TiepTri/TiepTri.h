@@ -37,21 +37,26 @@ English :
 
 Header-MicMac-eLiSe-25/06/2007*/
 
+// EpipolarEcart
+//        double  EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D & aCam2,const Pt2dr & aP2) const;
+
 
 #ifndef _TiePTri_
 #define _TiePTri_
 
 #include "StdAfx.h"
 #include "../../TpMMPD/TiePByMesh/Fast.h"
+#include "MultTieP.h"
 // Header du header
+
 class cHomolPackTiepTri;
 class cParamAppliTieTri;
 class cAppliTieTri;
 class cImTieTri;
 class cImMasterTieTri;
 class cImSecTieTri;
-template<class Type> class cResulRechCorrel;
-template<class Type> class cResulMultiImRechCorrel;
+class cResulRechCorrel;
+class cResulMultiImRechCorrel;
 class cOneTriMultiImRechCorrel;
 class cIntTieTriInterest;
 class cLinkImTT;
@@ -59,32 +64,58 @@ class cLinkImTT;
 
 #define TT_DefCorrel -2.0
 #define TT_MaxCorrel 1.0
-#define TT_DIST_RECH_HOM 12.0  // Seuil de recherche des homologues
-#define TT_DIST_EXTREMA  3.0   // calcul des extrema locaux
-#define TT_DIST_FAST  4.0   // Critere type Fast calcul des extrema locaux
 
-#define TT_SEUIL_CORREL_1PIXSUR2  0.7   // calcul des extrema locaux
+//======= Point d'interet & Other Seuil ============//
+#define TT_DIST_RECH_HOM 12.0  // Seuil de recherche des homologues lors de la premiere iteration (par les etiquettes)
+#define TT_DIST_EXTREMA  3.0   // Taille du voisinage sur lequel un extrema local doit etre max
+#define TT_SEUIL_SURF_TRI_PIXEL   100 //  Supprime les triangles trop petits
+
+//======= Filtrage Spatial Seuil ============//
 #define TT_DefSeuilDensiteResul   50   // conserve 1 point / disque de rayon TT_DefSeuilDensiteResul
-#define TT_RatioFastFiltrSpatial  4     // Ratio par rapport a TT_DefSeuilDensiteResul     
-#define TT_SEUIL_SURF_TRI_PIXEL   100.0 //  Supprime les triangles trop petits
+// Rayon de filtrage spatial du point apres l'appariement
+// Dans FiltrageSpatialRMIRC()
 
+#define TT_RatioFastFiltrSpatial     8    // Ratio par rapport a TT_DefSeuilDensiteResul, pour point I Fast
+#define TT_RatioCorrEntFiltrSpatial  4    // Ratio par rapport a TT_DefSeuilDensiteResul, pour point apres Corr Ent
+#define TT_RatioCorrSupPix           2    // Ratio par rapport a TT_DefSeuilDensiteResul, pour point apres Corr Ent
+#define TT_RatioCorrLSQ              1    // Ratio par rapport a TT_DefSeuilDensiteResul, pour point apres Corr Ent
+
+//  ===========================
+
+#define TT_FSDeltaCorrel 0.2 // Dans filtrage spatial, delta de correl/ aux max point que l'on va eliminer
+#define TT_FSExpoAtten   2   // Dans filtrage spatial, module l'attenaution fontion de la distance
+
+
+//(TT_DefSeuilDensiteResul/TT_RatioFastFiltrSpatial).^2 = rayon de filtrage spatial du point d'interet.
+// Cet seuil est appliquer pour filtrer les point d'interet juste apres la detection de point d'interet
+// Appliquer sur image maitraisse seulement
+// Priorité par FAST quality
+
+//======= AutoCorrel Critere Seuil ============//
 #define TT_SEUIL_AutoCorrel  0.85          // Seuil d'elimination par auto-correlation
 #define TT_SEUIL_CutAutoCorrel_INT 0.65    // Seuil d'acceptation rapide par auto correl entiere
 #define TT_SEUIL_CutAutoCorrel_REEL 0.75   // Seuil d'acceptation rapide par auto correl reelle
-
-#define TT_SEUIl_DIST_Extrema_Entier  1.5  // Distance entre l'extrema init et le max de correl trouve
-
-#define TT_DemiFenetreCorrel 6
-
-#define TT_PropFastStd 0.75
-#define TT_PropFastConsec 0.6
-
-#define TT_SeuilFastStd  5
-#define TT_SeuilFastCons 3
-
 #define TT_SZ_AUTO_COR 3
 
-// #define  TT_SEUIL
+//======= Correlation Seuil ============//
+#define TT_SEUIL_CORREL_1PIXSUR2  0.7   // seuil d'acceptation pour correl 1px/2
+#define TT_SEUIl_DIST_Extrema_Entier  1.5  // Distance entre l'extrema init et le max de correl trouve.
+                                           //seuil d'acceptation point pour correl 1px/2 & pixel entier.
+#define TT_DemiFenetreCorrel 6
+//  Correlation 1PIX/2 => aSzW = TT_DemiFenetreCorrel/2
+//  Correlation entier => aSzW = TT_DemiFenetreCorrel
+
+//======= FAST Critere Seuil ============//
+#define TT_DIST_FAST  4.0   // Critere type Fast calcul des extrema locaux
+
+// 75% de point Non consecutive ecarte point noyeau un valeur d'intensité min = 5
+#define TT_PropFastStd 0.75
+#define TT_SeuilFastStd  5
+
+// 60% de point consecutive ecarte point noyeau un valeur d'intensité min = 3
+#define TT_PropFastConsec 0.6
+#define TT_SeuilFastCons 3
+
 
 
 extern bool BugAC;
@@ -106,6 +137,11 @@ typedef cInterpolateurIm2D<tElTiepTri>  tInterpolTiepTri;
 // extern Pt2dr   TestFastQuality(TIm2D<double,double> anIm,Pt2di aP,double aRay,bool IsMax,Pt2dr aProp);
 extern void TestcAutoCorrelDir(TIm2D<double,double> aTIm,const Pt2di & aP0);
 
+#define ETAPE_CORREL_ENT    0
+#define ETAPE_CORREL_BILIN  1
+#define ETAPE_CORREL_DENSE  2
+#define ETAPE_FINALE        3
+
 // Pour initialiser les parametres avec EAM en ayant un constructeur trivial
 class cParamAppliTieTri
 {
@@ -120,6 +156,19 @@ class cParamAppliTieTri
         int      mNivLSQM;
         double   mRandomize;
         bool     mNoTif;
+        bool     mFilSpatial;
+        bool     mFilAC;
+        bool     mFilFAST;
+        double   mTT_SEUIL_SURF_TRI;
+        double   mTT_SEUIL_CORREL_1PIXSUR2;
+        double   mTT_SEUIl_DIST_Extrema_Entier;
+        int      mEtapeInteract;
+        int      mLastEtape;   // Inclusif !!
+        int      mFlagFS;   // FlagFitrage Spatial
+        string   mHomolOut;
+        Pt2dr    mSurfDiffAffHomo;
+        bool     mUseHomo;
+        double   mMaxErr;
 };
 
 
@@ -138,6 +187,7 @@ class cAppliTieTri : public cParamAppliTieTri
            );
 
            void SetSzW(Pt2di , int);
+           bool CurEtapeInFlagFiltre() const;
 
 
            cInterfChantierNameManipulateur * ICNM();
@@ -153,24 +203,41 @@ class cAppliTieTri : public cParamAppliTieTri
            const std::vector<Pt2di> &   VoisHom() const;
            bool  & Debug() ;
            const double & DistRechHom() const;
-           int & NivInterac();
            const cElPlan3D & CurPlan() const;
 
 
            tInterpolTiepTri * Interpol();
 
            void FiltrageSpatialRMIRC(const double & aDist);
-           void  RechHomPtsDense(cResulMultiImRechCorrel<double> &);
+
+           // void FiltrageSpatialGlobRMIRC(const double & aDist);
+           std::vector<cResulMultiImRechCorrel *> FiltrageSpatial
+                                       (
+                                           const std::vector<cResulMultiImRechCorrel *> & aVIn,
+                                           double aSeuilDist,
+                                           double aGainCorrel
+                                       );
+
+
+
+           void  RechHomPtsDense(cResulMultiImRechCorrel &);
            void SetPtsSelect(const Pt2dr & aP);
            void SetNumSelectImage(const std::vector<int> & aNum);
            bool HasPtSelecTri() const;
            const Pt2dr & PtsSelectTri() const;
            bool NumImageIsSelect(const int aNum) const;
 
-           void PutInGlobCoord(cResulMultiImRechCorrel<double> & aRMIRC);
+           void PutInGlobCoord(cResulMultiImRechCorrel & aRMIRC,bool WithDecal,bool WithRedr);
 
             const std::string &  KeyMasqIm() const;
             void SetMasqIm(const  std::string  & aKeyMasqIm);
+
+            Pt2dr &         MoyDifAffHomo() {return mMoyDifAffHomo;}
+            Pt2dr &         MaxDifAffHomo() {return mMaxDifAffHomo;}
+            int   &         CountDiff() {return mCountDiff;}
+            vector<int> &   HistoErrAffHomoX() {return mHistoErrAffHomoX;}
+            vector<int> &   HistoErrAffHomoY() {return mHistoErrAffHomoY;}
+            ofstream mErrLog;
 
       private  :
          cAppliTieTri(const cAppliTieTri &); // N.I.
@@ -196,7 +263,6 @@ class cAppliTieTri : public cParamAppliTieTri
          // Les voisins pour rechercher les homologues une certaine distance
          std::vector<Pt2di>                mVoisHom;
          bool                              mDebug;
-         int                               mNivInterac;
          // Le plan du triangle courant
          cElPlan3D                         mCurPlan;
          // Les interpolateurs
@@ -204,8 +270,9 @@ class cAppliTieTri : public cParamAppliTieTri
          tInterpolTiepTri *                mInterpolBicub;
          tInterpolTiepTri *                mInterpolBilin;
 
-         std::vector<cResulMultiImRechCorrel<double>*> mVCurMIRMC;
-         std::vector<cOneTriMultiImRechCorrel>         mVGlobMIRMC;
+         std::vector<cResulMultiImRechCorrel*> mVCurMIRMC;
+         std::vector<cResulMultiImRechCorrel*> mGlobMRIRC;
+         // std::vector<cOneTriMultiImRechCorrel>         mVGlobMIRMC;
 
          int       mNbTriLoaded;
          int       mNbPts;
@@ -218,8 +285,16 @@ class cAppliTieTri : public cParamAppliTieTri
          Pt2dr              mPtsSelectTri;
          bool               mHasNumSelectImage;
          std::vector<int>   mNumSelectImage;
-
          std::string        mKeyMasqIm;
+
+         bool               mPIsInImRedr;  // Savoir si les points de correlation sont points redresses ou non
+         int                mCurEtape;
+
+         Pt2dr          mMoyDifAffHomo;
+         Pt2dr          mMaxDifAffHomo;
+         int            mCountDiff;
+         vector<int>    mHistoErrAffHomoX;
+         vector<int>    mHistoErrAffHomoY;
 };
 
 /*
@@ -241,6 +316,7 @@ class cIntTieTriInterest
 {
     public :
        cIntTieTriInterest(const Pt2di & aP,eTypeTieTri aType,const double & aFastQual);
+       cIntTieTriInterest(const cIntTieTriInterest &aPt);
 
        Pt2di        mPt;
        eTypeTieTri  mType;
@@ -276,6 +352,13 @@ class cImTieTri
            const int & Num() const;
            string NameIm() {return mNameIm;}
            bool AutoCorrel(Pt2di aP);
+           Tiff_Im   Tif();
+
+           std::vector<Pt3dr> & PtTri3DHomoGrp() {return mPtTri3DHomoGrp;}
+
+           Pt2dr &         P1Glob() {return mP1Glob;}
+           Pt2dr &         P2Glob() {return mP2Glob;}
+           Pt2dr &         P3Glob() {return mP3Glob;}
            
       protected :
            cImTieTri(const cImTieTri &) ; // N.I.
@@ -306,6 +389,7 @@ class cImTieTri
            Pt2dr          mP2Glob;
            Pt2dr          mP3Glob;
            std::vector<Pt2dr> mVTriGlob;
+           std::vector<Pt3dr> mPtTri3DHomoGrp;
 
            Pt2dr          mP1Loc;
            Pt2dr          mP2Loc;
@@ -337,6 +421,7 @@ class cImMasterTieTri : public cImTieTri
            bool LoadTri(const cXml_Triangle3DForTieP & );
 
            cIntTieTriInterest  GetPtsInteret();
+           cResulMultiImRechCorrel * GetRMIRC(const std::vector<cResulMultiImRechCorrel*> & aVR);
            virtual bool IsMaster() const ;
            virtual tTImTiepTri & ImRedr();
            const std::list<cIntTieTriInterest> & LIP() const;
@@ -354,12 +439,22 @@ class cImSecTieTri : public cImTieTri
            cImSecTieTri(cAppliTieTri & ,const std::string& aNameIm,int aNum);
            bool LoadTri(const cXml_Triangle3DForTieP & );
 
-            cResulRechCorrel<double>  RechHomPtsInteretBilin(const cIntTieTriInterest & aP,int aNivInterac);
-            cResulRechCorrel<double>  RechHomPtsDense(const Pt2di & aP0,const cResulRechCorrel<double> & aPIn);
+            cResulRechCorrel  RechHomPtsInteretEntier(bool Interact,const cIntTieTriInterest & aP);
+            cResulRechCorrel  RechHomPtsInteretBilin(bool Interact,const cResulMultiImRechCorrel &aRMIC,int aKIm);
+            cResulRechCorrel  RechHomPtsDense(bool Interact,const cResulMultiImRechCorrel &aRMIC,int aKIm);
+
+            cResulRechCorrel  RechHomPtsGen(bool Interact,int aNumEtape,const cResulMultiImRechCorrel &aRMIC,int aKIm);
+
+            // cResulRechCorrel  RechHomPtsInteretBilin(bool Interact,const Pt2dr & aP0,const cResulRechCorrel & aCRC0);
+            // Enchaine RechHomPtsInteretEntier puis RechHomPtsInteretBilin
+            // cResulRechCorrel  RechHomPtsInteretEntierAndRefine(bool Interact,const cIntTieTriInterest & aP);
+
 
            virtual bool IsMaster() const ;
            virtual tTImTiepTri & ImRedr();
            ElPackHomologue & PackH() ;
+           Pt2dr   Mas2Sec(const Pt2dr &) const;
+           Pt2dr   Mas2Sec_Hom(const Pt2dr &) const;
     private :
            bool InMasqReech(const Pt2dr &) const;
            bool InMasqReech(const Pt2di &) const;
@@ -379,6 +474,10 @@ class cImSecTieTri : public cImTieTri
            Pt2di                         mSzReech;
            ElAffin2D                     mAffMas2Sec;
            ElAffin2D                     mAffSec2Mas;
+
+           cElHomographie                mHomMas2Sec;
+           cElHomographie                mHomSec2Mas;
+
            cImMasterTieTri *             mMaster;
            ElPackHomologue               mPackH;
 };
@@ -432,101 +531,80 @@ class cLSQAffineMatch
 // inline const double & MyDeCorrel() {static double aR=-2.0; return aR;}
 
 
-template<class Type> class cResulRechCorrel
+class cResulRechCorrel
 {
      public :
-          cResulRechCorrel(const Pt2d<Type>& aPt,double aCorrel)  :
-              mPt     (aPt),
-              mCorrel (aCorrel)
-          {
-          }
-          bool IsInit() const {return mCorrel > TT_DefCorrel;}
+          cResulRechCorrel(const Pt2dr & aPt,double aCorrel)  ;
+          bool IsInit() const ;
+          cResulRechCorrel() ;
+          void Merge(const cResulRechCorrel & aRRC);
 
-          cResulRechCorrel() :
-              mPt     (0,0),
-              mCorrel (TT_DefCorrel)
-          {
-          }
-
-          void Merge(const cResulRechCorrel & aRRC)
-          {
-              if (aRRC.mCorrel > mCorrel)
-              {
-                    // mCorrel = aRRC.mCorrel;
-                    // mPt     =  aRRC.mPt;
-                  *this = aRRC;
-              }
-          }
-
-          Pt2d<Type>  mPt;
+          Pt2dr  mPt;
           double      mCorrel;
 
 };
 
-template<class Type> class cResulMultiImRechCorrel
+class cResulMultiImRechCorrel
 {
     public :
-         cResulMultiImRechCorrel(const cIntTieTriInterest & aPMaster) :
-                mPMaster (aPMaster),
-                mScore   (TT_MaxCorrel),
-                mAllInit  (true)
-          {
-          }
+          cResulMultiImRechCorrel(const cIntTieTriInterest & aPMaster) ;
+          double square_dist(const cResulMultiImRechCorrel & aR2) const;
+          void AddResul(const cResulRechCorrel aRRC,int aNumIm);
+          bool AllInit() const ;
+          bool IsInit() const  ;
+          double Score() const ;
+          const std::vector<cResulRechCorrel > & VRRC() const ;
+          std::vector<cResulRechCorrel > & VRRC() ;
+          const cIntTieTriInterest & PIMaster() const ;
+          cIntTieTriInterest & PIMaster() ;
+          Pt2di PtMast() const ;
+          const std::vector<int> &    VIndex()   const ;
+          void CalculScoreMin();
+          void CalculScoreAgreg(double Epsilon,double pow,double aSign);
 
-          double square_dist(const cResulMultiImRechCorrel & aR2) const
-          {
-               return square_euclid(mPMaster.mPt,aR2.mPMaster.mPt);
-          }
-          void AddResul(const cResulRechCorrel<double> aRRC,int aNumIm)
-          {
-              if (aRRC.IsInit())
-              {
-                  mScore = ElMin(mScore,aRRC.mCorrel);
-                  mVRRC.push_back(aRRC);
-                  mVIndex.push_back(aNumIm);
-              }
-              else
-              {
-                   mAllInit = false;
-              }
-          }
-          bool AllInit() const  {return mAllInit ;}
-          bool IsInit() const  {return mAllInit && (mVRRC.size() !=0) ;}
-          double Score() const {return mScore;}
-          const std::vector<cResulRechCorrel<double> > & VRRC() const {return mVRRC;}
-          std::vector<cResulRechCorrel<double> > & VRRC() {return mVRRC;}
-          const cIntTieTriInterest & PMaster() const {return  mPMaster;}
-          cIntTieTriInterest & PMaster() {return  mPMaster;}
-          const std::vector<int> &                              VIndex()   const {return  mVIndex;}
+          int & HeapIndexe () ;
+          const int & HeapIndexe () const ;
+          // std::vector<bool>  &   VSelec(); 
+          //const std::vector<bool>  &   VSelec() const; 
+          int NbSel() const;
+          void SetAllSel();
+          void SetSelec(int aK,bool aVal);
+
+          void SuprUnSelect();
+          static void SuprUnSelect(std::vector<cResulMultiImRechCorrel*> &);
     private :
 
-         cResulMultiImRechCorrel(const cResulMultiImRechCorrel<Type> & ) ; // N.I.
+         cResulMultiImRechCorrel(const cResulMultiImRechCorrel & ) ; // N.I.
         
          cIntTieTriInterest                     mPMaster;
          double                                 mScore;
          bool                                   mAllInit;
-         std::vector<cResulRechCorrel<double> > mVRRC;
+         std::vector<cResulRechCorrel > mVRRC;
          std::vector<int>                       mVIndex;
+         std::vector<bool>                      mVSelec; // Utilise dans le filtrage spatial pour savoir si ce point a deja ete selec
+         int                                    mHeapIndexe;
+         int                                    mNbSel;
 };
 
-
+/*
 class cOneTriMultiImRechCorrel
 {
     public :
-       cOneTriMultiImRechCorrel(int aKT,const std::vector<cResulMultiImRechCorrel<double>*> & aVMultiC) :
+       cOneTriMultiImRechCorrel(int aKT,const std::vector<cResulMultiImRechCorrel*> & aVMultiC) :
            mKT      (aKT),
            mVMultiC (aVMultiC)
        {
        }
-       const std::vector<cResulMultiImRechCorrel<double>*>&  VMultiC() const {return  mVMultiC;}
-       const int  &  KT()   const {return  mKT;}
+       const std::vector<cResulMultiImRechCorrel*>&  VMultiC() const {return  mVMultiC;}
     private :
 
          // cOneTriMultiImRechCorrel(const cOneTriMultiImRechCorrel &); // N.I.
         
+        const int  &  KT()   const {return  mKT;}
         int mKT;
-        std::vector<cResulMultiImRechCorrel<double>*>  mVMultiC;
+        std::vector<cResulMultiImRechCorrel*>  mVMultiC;
 };
+*/
 
 
 
@@ -540,7 +618,7 @@ Pt2dr TT_CorrelBasique
                                 const int   aStep
                              );
 
-cResulRechCorrel<int> TT_RechMaxCorrelBasique
+cResulRechCorrel      TT_RechMaxCorrelBasique
                       (
                              const tTImTiepTri & Im1,
                              const Pt2di & aP1,
@@ -561,7 +639,7 @@ Pt2dr TT_CorrelBilin
                const int   aSzW
        );
 
-cResulRechCorrel<int> TT_RechMaxCorrelLocale
+cResulRechCorrel      TT_RechMaxCorrelLocale
                       (
                              const tTImTiepTri & aIm1,
                              const Pt2di & aP1,
@@ -572,16 +650,17 @@ cResulRechCorrel<int> TT_RechMaxCorrelLocale
                              const int   aSzRechMax
                       );
 
-cResulRechCorrel<double> TT_RechMaxCorrelMultiScaleBilin
+cResulRechCorrel      TT_RechMaxCorrelMultiScaleBilin
                       (
                              const tTImTiepTri & aIm1,
                              const Pt2dr & aP1,
                              const tTImTiepTri & aIm2,
                              const Pt2dr & aP2,
-                             const int   aSzW
+                             const int   aSzW,
+                             double aStepFinal
                       );
 
-cResulRechCorrel<double> TT_MaxLocCorrelDS1R
+cResulRechCorrel         TT_MaxLocCorrelDS1R
                          (
                               tInterpolTiepTri *  anInterpol,
                               cElMap2D *          aMap,

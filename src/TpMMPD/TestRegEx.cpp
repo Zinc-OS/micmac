@@ -39,13 +39,19 @@ Header-MicMac-eLiSe-25/06/2007*/
 #include "StdAfx.h"
 
 
-
-
+template <typename T> string NumberToString(T Number)
+{
+	ostringstream ss;
+    ss << Number;
+    return ss.str();
+}
+  
 //----------------------------------------------------------------------------
 int TestRegEx_main(int argc,char ** argv)
 {
     std::string aFullPattern;//pattern of all files
     bool aDispPatt=false;
+    string aExport;
     
     ElInitArgMain
     (
@@ -55,6 +61,8 @@ int TestRegEx_main(int argc,char ** argv)
     
     //optional arguments
     LArgMain()  << EAM(aDispPatt, "DispPat", false, "Display Pattern to use in cmd line ; Def=false", eSAM_IsBool)
+                << EAM(aExport, "ExpList", false, "Export list image in text file ; Def=false")
+
   
     );
     
@@ -66,6 +74,13 @@ int TestRegEx_main(int argc,char ** argv)
     std::cout<<"Working dir: "<<aDirImages<<std::endl;
     std::cout<<"Files pattern: "<<aPatIm<<std::endl;
 
+    ofstream aExpListImg;
+
+    if (EAMIsInit(&aExport))
+    {
+        aExpListImg.open (aExport.c_str());
+    }
+
 
     cInterfChantierNameManipulateur * aICNM=cInterfChantierNameManipulateur::BasicAlloc(aDirImages);
     const std::vector<std::string> aSetIm = *(aICNM->Get(aPatIm));
@@ -76,6 +91,10 @@ int TestRegEx_main(int argc,char ** argv)
     for (unsigned int i=0;i<aSetIm.size();i++)
     {
         std::cout<<" - "<<aSetIm[i]<<std::endl;
+        if (EAMIsInit(&aExport))
+        {
+           aExpListImg<<aSetIm[i]<<endl;
+        }
         aVIm.push_back(aSetIm[i]);
     }
     std::cout<<"Total: "<<aSetIm.size()<<" files."<<std::endl;
@@ -146,7 +165,7 @@ int PatFromOri_main(int argc,char ** argv)
 //to add : toutes les pairs possibles (en option)
 int GenFilePairs_main(int argc,char ** argv)
 {
-	std::string aImg, aFullPat, aOut="NameCple.xml";
+    std::string aImg, aFullPat, aOut="NameCple.xml";
 	
 	ElInitArgMain
     (
@@ -195,7 +214,6 @@ int GenFilePairs_main(int argc,char ** argv)
 	
 	return EXIT_SUCCESS;
 }
-/******************************************************/
 
 //----------------------------------------------------------------------------
 int CleanPatByOri_main(int argc,char ** argv)
@@ -280,6 +298,89 @@ int CleanPatByOri_main(int argc,char ** argv)
 	return EXIT_SUCCESS;
 }
 
+//----------------------------------------------------------------------------
+int RedImgsByN_main(int argc,char** argv)
+{
+	std::string aFullName, aDir, aPat, aOut="Selected_Images";
+	int aPas;
+	bool aShow=false;
+	
+	ElInitArgMain
+    (
+    argc,argv,
+    //mandatory arguments
+	LArgMain()  << EAMC(aFullName,"Full Name (Dir+Pat)")
+				<< EAMC(aPas,"1/Pas"),
+	LArgMain()  << EAM(aShow, "Show", false, "Display Pattern to use in cmd line ; Def=false",eSAM_IsBool)
+				<< EAM(aOut, "Out", false, "Output Folder Name for Images that will be used ; Def=Selected_Images")
+	);
+	
+	if (MMVisualMode) return EXIT_SUCCESS;
+	
+	//check if Output folder is not existing create it
+	ELISE_fp::MkDirSvp(aOut);
+
+    SplitDirAndFile(aDir, aPat, aFullName);
+
+    cInterfChantierNameManipulateur *aICNM = cInterfChantierNameManipulateur::BasicAlloc(aDir);
+    const std::vector<std::string> aSetIm = *(aICNM->Get(aPat));
+    
+    for (unsigned int aP=0; aP<aSetIm.size(); aP=aP+aPas)
+    {
+		ELISE_fp::CpFile(aSetIm.at(aP),aOut);
+	}
+	
+	return EXIT_SUCCESS;
+}
+
+//----------------------------------------------------------------------------
+int MvImgsByFile_main(int argc,char** argv)
+{
+	std::string aDir="";
+	std::string aFile=""; //Schnaps_poubelle.txt (format)
+	bool aShow=false;
+	std::string aTrashName="Poubelle";
+	
+	ElInitArgMain
+    (
+    argc,argv,
+    //mandatory arguments
+	LArgMain()  << EAMC(aDir,"Directory")
+				<< EAMC(aFile,"File with images names by line"),
+	LArgMain()  << EAM(aShow, "Show", false, "Display Pattern to use in cmd line ; Def=false",eSAM_IsBool)
+	);
+	
+	if (MMVisualMode) return EXIT_SUCCESS;
+	
+	ELISE_fp::MkDirSvp(aTrashName);
+	
+	//read input file
+    ifstream aFichier((aDir + aFile).c_str());
+
+    if(aFichier)
+    {
+		std::string aLine;
+        
+        while(!aFichier.eof())
+        {
+			getline(aFichier,aLine);
+			if(!aLine.empty())
+			{
+				ELISE_fp::MvFile(aLine,aTrashName);
+				std::cout << " Move image : " << aLine << "--> " << aTrashName << std::endl;
+			}
+		}
+	aFichier.close();
+	}
+	else
+    {
+		std::cout<< "Error While opening file" << '\n';
+	}
+	
+	return EXIT_SUCCESS;
+}
+
+//----------------------------------------------------------------------------
 class cTestElParseDir : public ElActionParseDir
 {
     public :

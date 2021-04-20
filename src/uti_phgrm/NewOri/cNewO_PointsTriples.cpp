@@ -81,6 +81,11 @@ bool cNewO_NameManager::LoadTriplet(const std::string & anI1,const std::string &
    std::string aName3 = NameHomTriplet(aVIm[0],aVIm[1],aVIm[2]);
    if (! ELISE_fp::exist_file(aName3)) return false;
 
+if (0 && MPD_MM())
+{
+   std::cout << "NN33333 " << aName3 << "\n";
+}
+
    tPtrVPt2df aVPt[3];
    aVPt[aRnk[0]] =  aVP1;
    aVPt[aRnk[1]] =  aVP2;
@@ -123,6 +128,10 @@ void cNewO_NameManager::LoadHomFloats(std::string  aName1,std::string  aName2,st
        ElSwap(aVP1,aVP2);
    }
    std::string aNameH = NameHomFloat(aName1,aName2);
+if (0 &&MPD_MM())
+{
+   std::cout << "N22222 " << aNameH << "\n";
+}
    GenLoadHomFloats(aNameH,aVP1,aVP2,SVP);
 }
 
@@ -223,7 +232,7 @@ void cNewO_NameManager::WriteCouple
 /*******************************************************************/
 
 
-class cAppli_GenPTripleOneImage
+class cAppli_GenPTripleOneImage : public cCommonMartiniAppli
 {
       public :
            cAppli_GenPTripleOneImage(int argc,char ** argv);
@@ -242,19 +251,13 @@ class cAppli_GenPTripleOneImage
            std::string                mDir3P;
            std::string                mDirSom;
            std::string                mName;
-           std::string                mOriCalib;
            std::vector<cNewO_OneIm*>  mVCams;
            cNewO_OneIm*               mCam;
            int                        mSeuilNbArc;
            // std::map<tPairStr>
            std::vector<std::vector<Pt2df> >  mVP1;
            std::vector<std::vector<Pt2df> >  mVP2;
-           bool                              mQuick;
-           std::string                       mPrefHom;
-           std::string                       mExtName;
            bool                              mSkWhenExist;
-           std::string                       mNameModeNO;
-           eTypeModeNO                       mModeNO;
 };
 
 class cCmpPtrIOnName
@@ -267,31 +270,23 @@ static cCmpPtrIOnName TheCmpPtrIOnName;
 
 cAppli_GenPTripleOneImage::cAppli_GenPTripleOneImage(int argc,char ** argv) :
     mSeuilNbArc  (1),  // Change car : existe des cas a forte assymetrie + 2 genere des plantage lorsque + de triplets que de couples
-    mQuick       (false),
-    mPrefHom     (""),
-    mExtName     (""),
-    mSkWhenExist (true),
-    mNameModeNO      (TheStdModeNewOri)
+    mSkWhenExist (true)
 {
+   
    ElInitArgMain
    (
         argc,argv,
         LArgMain() << EAMC(mFullName,"Name of Image", eSAM_IsExistFile),
-        LArgMain() << EAM(mOriCalib,"OriCalib",true,"Calibration directory", eSAM_IsExistDirOri)
-                   << EAM(mQuick,"Quick",true,"Quick version", eSAM_IsBool)
+        LArgMain() 
                    << EAM(mSkWhenExist,"SWE",true,"Skip when file alreay exist (Def=true, tuning purpose)", eSAM_IsBool)
-                   << EAM(mPrefHom,"PrefHom",true,"Prefix Homologous points, def=\"\"")
-                   << EAM(mExtName,"ExtName",true,"User's added Prefix, def=\"\"")
-                   << EAM(mNameModeNO,"ModeNO",true,"Mode (Def=Std)")
-
+                   << ArgCMA()
    );
 
-   mModeNO = ToTypeNO(mNameModeNO);
 
    if (MMVisualMode) return;
 
    SplitDirAndFile(mDir,mName,mFullName);
-   mNM  = new cNewO_NameManager(mExtName,mPrefHom,mQuick,mDir,mOriCalib,"dat");
+   mNM  = new cNewO_NameManager(mExtName,mPrefHom,mQuick,mDir,mNameOriCalib,"dat");
    mDir3P = mNM->Dir3P(false);
    ELISE_ASSERT(ELISE_fp::IsDirectory(mDir3P),"Dir point triple");
 
@@ -344,10 +339,14 @@ cAppli_GenPTripleOneImage::cAppli_GenPTripleOneImage(int argc,char ** argv) :
 /*                                                                 */
 /*******************************************************************/
 
+
 void cAppli_GenPTripleOneImage::GenerateTriplets()
 {
    ElTimer aChrono;
    if (!mSkWhenExist)  std::cout << "GeneratePointTriple " << mCam->Name() << "\n";  // !mSkWhenExist ~ mise au point
+
+
+   /* Charge les points correspond a tous les homologues avec le "master" */
 
    mVP1.resize(mVCams.size());
    mVP2.resize(mVCams.size());
@@ -356,6 +355,8 @@ void cAppli_GenPTripleOneImage::GenerateTriplets()
        mNM->LoadHomFloats(mCam,mVCams[aKC],&(mVP1[aKC]),&(mVP2[aKC]));
    }
 
+   /* parcour tout les couple d'images ne contenant pas le master, pour generer
+      les triplets avec le master */
    for (int aKC1=1 ; aKC1<int(mVCams.size()) ; aKC1++)
    {
       for (int aKC2=aKC1+1 ; aKC2<int(mVCams.size()) ; aKC2++)
@@ -377,6 +378,9 @@ void AddVPts2Map(tMapM & aMap,const std::vector<Pt2df> & aVP1,int anInd1,const s
 }
 
 
+/*
+   Ecrit eventuellement le fichier de points tripe [0,KC1,KC2]
+*/
 
 
 void  cAppli_GenPTripleOneImage::GenerateTriplet(int aKC1,int aKC2)
@@ -387,11 +391,13 @@ void  cAppli_GenPTripleOneImage::GenerateTriplet(int aKC1,int aKC2)
     std::string aName3 = mNM->NameHomTriplet(mCam,mVCams[aKC1],mVCams[aKC2]);
     if (mSkWhenExist && ELISE_fp::exist_file(aName3)) return;
 
+    // Lit le dernier vecteur de point homologue qui manquait
     std::vector<Pt2df> aVP1In;
     std::vector<Pt2df> aVP2In;
     mNM->LoadHomFloats(mVCams[aKC1],mVCams[aKC2],&aVP1In,&aVP2In);
 
 
+    // Cree la structure de points multiples
     tMapM aMap(3,false);
     AddVPts2Map(aMap,aVP1In,1,aVP2In,2);
     AddVPts2Map(aMap,mVP1[aKC1],0,mVP2[aKC1],1);
@@ -399,6 +405,7 @@ void  cAppli_GenPTripleOneImage::GenerateTriplet(int aKC1,int aKC2)
     aMap.DoExport();
     const tListM aLM =  aMap.ListMerged();
 
+    // Enregistre les points triples
     std::vector<Pt2df> aVP1Exp,aVP2Exp,aVP3Exp;
     std::vector<U_INT1> aVNb;
     for (tListM::const_iterator itM=aLM.begin() ; itM!=aLM.end() ; itM++)
@@ -413,13 +420,23 @@ void  cAppli_GenPTripleOneImage::GenerateTriplet(int aKC1,int aKC2)
     }
 
     int aNb = (int)aVP1Exp.size();
-    if (aNb<TNbMinTriplet)
+    if (aNb<mTNbMinTriplet)
     {
        aMap.Delete();
        return;
     }
+    // Sauvegarde les triplet si assez
 
     mNM->WriteTriplet(aName3,aVP1Exp,aVP2Exp,aVP3Exp,aVNb);
+
+if (0 && MPD_MM())
+{
+    std::cout << "GGTTt 3 " <<  aNb  
+             << " :: " << aVP1In.size() << " " << aVP2In.size()
+             << " :: " << mVP1[aKC1].size() << " " <<  mVP2[aKC1].size()
+             << " :: " << mVP1[aKC2].size() << " " <<  mVP2[aKC2].size()
+             << "\n";
+}
 
     aMap.Delete();
 }
@@ -553,31 +570,25 @@ int PreGenerateDuTriplet(int argc,char ** argv,const std::string & aComIm)
 {
    MMD_InitArgcArgv(argc,argv);
 
-   std::string aFullName,anOriCalib;
-   bool aQuick;
+   std::string aFullName;
    bool aSkWhenExist;
-   std::string aPrefHom="";
-   std::string aExtName="";
-   std::string aNameModeNO  = TheStdModeNewOri;
+   cCommonMartiniAppli aCMA;
    ElInitArgMain
    (
         argc,argv,
         LArgMain() << EAMC(aFullName,"Name of Image"),
-        LArgMain() << EAM(anOriCalib,"OriCalib",true,"Calibration directory ")
-                   << EAM(aQuick,"Quick",true,"Quick version")
+        LArgMain()
                    << EAM(aSkWhenExist,"SWE",true,"Skip when file alreay exist (Def=true, tuning purpose)", eSAM_IsBool)
-                   << EAM(aPrefHom,"PrefHom",true,"Prefix Homologous points, def=\"\"")
-                   << EAM(aExtName,"ExtName",true,"User's added Prefix, def=\"\"")
-                   << EAM(aNameModeNO,"ModeNO",true,"Mode (Def=Std)")
+                   << aCMA.ArgCMA()
    );
 
    cElemAppliSetFile anEASF(aFullName);
-   if (!EAMIsInit(&anOriCalib))
+   if (!EAMIsInit(&aCMA.mNameOriCalib))
    {
       MakeXmlXifInfo(aFullName,anEASF.mICNM);
    }
 
-   cNewO_NameManager aNM(aExtName,aPrefHom,aQuick,anEASF.mDir,anOriCalib,"dat");
+   cNewO_NameManager aNM(aCMA.mExtName,aCMA.mPrefHom,aCMA.mQuick,anEASF.mDir,aCMA.mNameOriCalib,"dat");
    aNM.Dir3P(true);
    const cInterfChantierNameManipulateur::tSet * aSetIm = anEASF.SetIm();
 
@@ -588,20 +599,17 @@ int PreGenerateDuTriplet(int argc,char ** argv,const std::string & aComIm)
        {
             std::string aCom =   MM3dBinFile_quotes( "TestLib ") + aComIm + " "  + anEASF.mDir+(*aSetIm)[aKIm] ;
 
-            if (EAMIsInit(&anOriCalib))  aCom = aCom + " OriCalib=" + anOriCalib;
-            aCom += " Quick=" +ToString(aQuick);
             aCom += " SWE=" +ToString(aSkWhenExist);
-            aCom += " PrefHom=" +aPrefHom;
-            aCom += " ExtName=" +aExtName;
-            aCom += " ModeNO=" +aNameModeNO;
+            aCom +=  aCMA.ComParam();
 
-            //           std::cout << "COM= " << aCom << "\n";
             anEPbP.AddCom(aCom);
        }
    }
 
     return EXIT_SUCCESS;
 }
+
+/* Apparemment cette fonction n'est pas appelle dans la chaine */
 
 int CPP_GenAllHomFloat(int argc,char ** argv)
 {

@@ -117,6 +117,17 @@ std::string ElDistortion22_Gen::Type() const
     return "UnknowDistType";
 }
 
+ElCamera * ElDistortion22_Gen::CameraOwner()
+{
+   return mCameraOwner;
+}
+
+
+void ElDistortion22_Gen::SetCameraOwner(ElCamera* aCam)
+{
+    mCameraOwner = aCam;
+}
+
 
 ElDistortion22_Gen::ElDistortion22_Gen() :
     mPolynInv         (0),
@@ -125,7 +136,8 @@ ElDistortion22_Gen::ElDistortion22_Gen() :
     mScN              (1.0),
     mDist22Gen_UsePreConditionner (true),
     mDist22Gen_SupressPreCondInInverse (false),
-    mName (0)
+    mName (0),
+    mCameraOwner (0)
 {
 }
 
@@ -674,9 +686,9 @@ ElDistortion22_Gen  * ElDistortion22_Triviale::D22G_ChScale(REAL aS) const
 bool ElDistortion22_Triviale::IsId() const {return true;}
 
 
-cCalibDistortion ElDistortion22_Triviale::ToXmlStruct(const ElCamera * aCam) const
+cCalibDistortion ElDistortion22_Triviale::ToXmlStruct(const ElCamera * ) const
 {
-   cCalibDistortion aRes =XmlDistNoVal(); //  ElDistortion22_Gen::BasicToXmlStruct(aCam);
+   cCalibDistortion aRes =XmlDistNoVal(); //  ElDistortion22_Gen::BasicToXmlStruct();
    cModNoDist aNoDist;
    aRes.ModNoDist().SetVal(aNoDist);
 
@@ -1096,7 +1108,7 @@ cCalibrationInterneRadiale  ElDistRadiale_PolynImpair::ToXmlDradStruct() const
 }
 
 
-cCalibDistortion ElDistRadiale_PolynImpair::ToXmlStruct(const ElCamera * aCam) const
+cCalibDistortion ElDistRadiale_PolynImpair::ToXmlStruct(const ElCamera * ) const
 {
     return FromCIR(ToXmlDradStruct());
 }
@@ -1182,9 +1194,9 @@ cCalibrationInternePghrStd cDistModStdPhpgr::ToXmlPhgrStdStruct() const
    return aRes;
 }
 
-cCalibDistortion cDistModStdPhpgr::ToXmlStruct(const ElCamera * aCam) const
+cCalibDistortion cDistModStdPhpgr::ToXmlStruct(const ElCamera * ) const
 {
-   cCalibDistortion aRes = XmlDistNoVal() ; // ElDistortion22_Gen::BasicToXmlStruct(aCam);
+   cCalibDistortion aRes = XmlDistNoVal() ; // ElDistortion22_Gen::BasicToXmlStruct();
    aRes.ModPhgrStd().SetVal(ToXmlPhgrStdStruct());
 
    return aRes;
@@ -1537,6 +1549,10 @@ ElDistortion22_Gen * ElDistortion22_Gen::AllocPreC
           case ePCR_2SinAtgtS2 :
              return new cDistPrecond2SinAtgtS2(aPCGR.F(),aPCGR.C());
           break;
+          case  ePCR_Stereographik :
+             return new  cDistPrecondSterographique(aPCGR.F(),aPCGR.C());
+          break;
+          default : break;
      }
      ELISE_ASSERT
      (
@@ -1749,6 +1765,12 @@ cDistCamStenopeGrid * cDistCamStenopeGrid::Alloc
 // std::cout << "Zigwy "  << aStepGr << " " << aCS.ScaleCamNorm() << " " << aCS.ScaleAfnt() << "\n";
 // getchar();
 
+// NIKRUP
+//std::cout << "P0P1 " << Pt2dr(0,0)-aPRab << " " << Pt2dr(aCS.Sz())+aPRab << "\n";
+//std::cout << "P0P1NORM " << aCS.NormC2M(Pt2dr(0,0)-aPRab) << " " <<  aCS.NormC2M(Pt2dr(aCS.Sz())+aPRab) << "\n";
+
+//getchar();
+//==============
 
    cDbleGrid * aGrid2 = new cDbleGrid
                            (

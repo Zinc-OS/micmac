@@ -37,55 +37,120 @@ English :
 
 Header-MicMac-eLiSe-25/06/2007*/
 #include "StdAfx.h"
+#include "RStats/cRStats.h"
 
 
 int  StatIm_main(int argc,char ** argv)
 {
 
-    string Name;
+        std::string aMasq;
+    	string Name;
         Pt2di aP0(0,0);
         Pt2di aSz(1,1);
-
-
-
+		bool aMoreStat=false;
+		bool aTxtExport=false;
+        bool aRatioXml=false;
 
 
     ElInitArgMain
     (
                 argc,argv,
                 LArgMain() 	<< EAMC(Name,"Image name", eSAM_IsExistFile)
-                                << EAMC(aP0,"Point or Origin of rectangle"),
-        LArgMain()      <<  EAM(aSz,"Sz",true,"Size of rectangle (Def=[1,1])")
+                            << EAMC(aP0,"Point or Origin of rectangle"),
+                LArgMain()  << EAM(aSz,"Sz",true,"Size of rectangle (Def=[1,1])")
+                            << EAM(aMoreStat,"Stat",true,"Calculate extra statistical measures (Def=false)")
+                            << EAM(aMasq,"Masq",true,"Masq for image")
+                            << EAM(aTxtExport,"TxtExport",true,"Export Image as .txt Matrix ; Def=false") 
+                            << EAM(aRatioXml,"RatioXmlExport",true,"Export median to XML_RatioCorrImage; Def=false") 
     );
 
     if(MMVisualMode) return EXIT_SUCCESS;
 
     Tiff_Im tiff = Tiff_Im::StdConv(Name);
+    
+    Symb_FNum aTF (Rconv(tiff.in()));
+    Fonc_Num aFPds (1.0);
 
+    if (EAMIsInit(&aMasq))
+    {
+        aP0 = Pt2di(0,0);
+		Tiff_Im aTF(aMasq.c_str());
+        aFPds = aTF.in(0);
+        if (!EAMIsInit(&aSz))
+        {
+			aSz = aTF.sz();
+        }
+    }
+    
+    if(aTxtExport)
+    {
+		std::string aOutputFile = "ImgMatrix.txt";
+		std::string aDir= "./";
+		
+		Im2D<double,double> aImgInd (tiff.sz().x,tiff.sz().y, -1.0);
+		
+		ELISE_COPY(aImgInd.all_pts(), tiff.in(), aImgInd.out());
+		
+		FILE * aFP = FopenNN(aOutputFile,"w","StatIm_main");
+        cElemAppliSetFile aEASF(aDir + ELISE_CAR_DIR + aOutputFile);
+        
+        for(int aI=0; aI<tiff.sz().x; aI++)
+        {
+			for(int aJ=0; aJ<tiff.sz().y; aJ++)
+			{
+				Pt2di aCoor(aI,aJ);
+				double aValue = aImgInd.GetR(aCoor);
+				fprintf(aFP,"%f ",aValue);
+			}
+			fprintf(aFP,"\n");
+        }
 
-        Symb_FNum aTF (Rconv(tiff.in()));
+        ElFclose(aFP);
+        std::cout<< aOutputFile <<" written."<<std::endl;
 
-        double aSP,aSomZ,aSomZ2,aZMin,aZMax;
-        ELISE_COPY
-        (
+	}
+
+    double aSP,aSomZ,aSomZ2,aZMin,aZMax,aSomAbs;
+    ELISE_COPY
+    (
             rectangle(aP0,aP0+aSz),
-            Virgule(1,aTF,Square(aTF)),
+            Virgule(1,aTF,Square(aTF),Abs(aTF))*aFPds,
             Virgule
             (
                  sigma(aSP),
                  sigma(aSomZ)|VMax(aZMax)|VMin(aZMin),
-                 sigma(aSomZ2)
+                 sigma(aSomZ2),
+                 sigma(aSomAbs)
             )
-        );
+    );
 
-        aSomZ /= aSP;
-        aSomZ2 /= aSP;
-        aSomZ2 -= ElSquare(aSomZ);
+    aSomZ /= aSP;
+    aSomZ2 /= aSP;
+    aSomZ2 -= ElSquare(aSomZ);
+    aSomAbs /= aSP;
 
-        std::cout << "ZMoy=" << aSomZ << " ; Sigma=" << sqrt(ElMax(0.0,aSomZ2)) << "\n";
-        std::cout << "ZMinMax=[" << aZMin << " , " << aZMax << "]\n";
+    std::cout << "ZMoy=" << aSomZ << " ; Sigma=" << sqrt(ElMax(0.0,aSomZ2)) << "\n";
+    std::cout << "ZMinMax=[" << aZMin << " , " << aZMax << "]\n";
+    std::cout << "MoyAbs=" << aSomAbs  << "\n";
+	
+	if (aMoreStat)
+	{
+		int aNbV=256;
+        
+        cRobustStats aRStat(Abs(tiff.in())*aFPds,aNbV,aP0,aSz);
+        //cRobustStats aRStat(Abs(aTF)*aFPds,aNbV,aP0,aSz);
+	}
 
+    if (aRatioXml)
+    {
 
+        cXML_RatioCorrImage aXml;
+        aXml.Ratio() = aSomZ;
+        aXml.NbPt() = aSP;
+        std::string aRatioXmlName = StdPrefix(Name) + ".xml";
+        MakeFileXML(aXml,aRatioXmlName);
+
+    }
 /*
         INT NbB = tiff.NbBits();
         INT NbV = 1<<NbB;
@@ -114,7 +179,7 @@ int  StatIm_main(int argc,char ** argv)
         }
 */
 
-   return 1;
+   return EXIT_SUCCESS;
 }
 
 

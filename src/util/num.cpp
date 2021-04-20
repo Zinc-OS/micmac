@@ -848,7 +848,7 @@ double Dl_f2SAtRxS2SRx(double x)
 }
 double Std_f2SAtRxS2SRx(double x)
 {
-   x  = sqrt(x);
+   x  = sqrt(ElAbs(x));
    return (2* sin(atan(x)/2) ) /x;
 }
 double  f2SAtRxS2SRx(double x)
@@ -857,6 +857,9 @@ double  f2SAtRxS2SRx(double x)
    if  (x<1e-5) return Dl_f2SAtRxS2SRx(x);
    return Std_f2SAtRxS2SRx(x);
 }
+
+
+
 
 double Dl_Der2SAtRxS2SRx(double x)
 {
@@ -880,7 +883,7 @@ double Der2SAtRxS2SRx(double x)
 
 double f4S2AtRxS2(double x)
 {
-   return  ElSquare(2* sin(atan(sqrt(ElAbs(x)))/2.0));
+   return  ElSquare(2* sin(  atan(sqrt(ElAbs(x)))  /2.0));
 }
 
 double  Dl_Der4S2AtRxS2(double x)
@@ -1079,7 +1082,7 @@ double MoyHarmonik(const double & aV1,const double & aV2,const double & aV3)
 
 bool CmpPtsX(const Pt2df & aP1,const Pt2df & aP2) {return aP1.x < aP2.x;}
 
-double MedianPond(std::vector<Pt2df> &  aV,int * aKMed)
+double PropPond(std::vector<Pt2df> &  aV,double aProp,int * aKMed)
 {
 /*
 if (MPD_MM())
@@ -1087,13 +1090,14 @@ if (MPD_MM())
 std::cout << "MedianPondMedianPond " << aV.size() << " " << aKMed << "\n";
 }
 */
+     ELISE_ASSERT(aV.size() !=0,"MedianPond with empty vector");
      std::sort(aV.begin(),aV.end(),CmpPtsX);
      double aSomP = 0;
      for (int aK=0 ; aK<int(aV.size()) ; aK++)
      {
           aSomP += aV[aK].y;
      }
-     aSomP /= 2.0;
+     aSomP *= aProp;
 
      int aK=0;
      for ( ; (aK<int(aV.size()-1)) && (aSomP>0)  ; aK++)
@@ -1106,9 +1110,14 @@ std::cout << "MedianPondMedianPond " << aV.size() << " " << aKMed << "\n";
         *aKMed = aK;
      }
 
-     return aV[aK].x;
+     return aV.at(aK).x;
 }
 
+
+double MedianPond(std::vector<Pt2df> &  aV,int * aKMed)
+{
+    return PropPond(aV,0.5,aKMed);
+}
 
 
 

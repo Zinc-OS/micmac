@@ -83,11 +83,22 @@ cNewO_NameManager::cNewO_NameManager
 }
 
 
-cVirtInterf_NewO_NameManager * cVirtInterf_NewO_NameManager::StdAlloc(const std::string & aDir,const std::string  & anOri,bool  Quick)
+cVirtInterf_NewO_NameManager * cVirtInterf_NewO_NameManager::StdAlloc(const std::string & aDir, const std::string  & anOri, bool  Quick)
 {
 
    return new cNewO_NameManager("","",Quick,aDir,anOri,"dat");
 }
+
+//=============== Surcharge method
+//           "cVirtInterf_NewO_NameManager * cVirtInterf_NewO_NameManager::StdAlloc"
+//                 pour adapter avec Suffix homol
+
+cVirtInterf_NewO_NameManager * cVirtInterf_NewO_NameManager::StdAlloc(const std::string  & aPrefHom, const std::string & aDir,const std::string  & anOri,bool  Quick)
+{
+
+   return new cNewO_NameManager("",aPrefHom,Quick,aDir,anOri,"dat");
+}
+//=====================================================================================================
 
 const std::string & cNewO_NameManager::Dir() const
 {
@@ -130,7 +141,7 @@ cInterfChantierNameManipulateur *  cNewO_NameManager::ICNM()
 
 CamStenope * cInterfChantierNameManipulateur::GlobCalibOfName(const std::string  & aName,const std::string & aPrefOriCal,bool aModeFraser) 
 {
-   // std::cout << "cInterfChantierNameManipulateur::GlobCalibOfName \n"; getchar();
+   // std::cout << "cInterfChantierNameManipulateur::GlobCalibOfName " << aPrefOriCal << "\n"; getchar();
 
 
    if (aPrefOriCal =="")
@@ -221,6 +232,38 @@ ElRotation3D cNewO_NameManager::OriCam2On1(const std::string & aNOri1,const std:
     //  return aN1InfN2 ? aR12 : aR12.inv();
 }
 
+std::pair<ElRotation3D,ElRotation3D> cNewO_NameManager::OriRelTripletFromExisting
+                                     (
+                                                    const std::string & aInOri,
+                                                    const std::string & aN1,
+                                                    const std::string & aN2,
+                                                    const std::string & aN3,
+                                                    bool & Ok
+                                      )
+{
+    std::pair<ElRotation3D,ElRotation3D> aRes(ElRotation3D::Id,ElRotation3D::Id);
+    Ok = false;
+    CamStenope * aCam1 = CamOriOfNameSVP(aN1,aInOri);
+    CamStenope * aCam2 = CamOriOfNameSVP(aN2,aInOri);
+    CamStenope * aCam3 = CamOriOfNameSVP(aN3,aInOri);
+    if (aCam1 && aCam2 && aCam3)
+    {
+       ElRotation3D aRot2Sur1  = (aCam2->Orient() *aCam1->Orient().inv());
+       ElRotation3D aRot3Sur1  = (aCam3->Orient() *aCam1->Orient().inv());
+       aRot2Sur1 = aRot2Sur1.inv();
+       aRot3Sur1 = aRot3Sur1.inv();
+
+       double aDist = euclid(aRot2Sur1.tr());
+       aRot2Sur1.tr() = aRot2Sur1.tr() /aDist;
+       aRot3Sur1.tr() = aRot3Sur1.tr() /aDist;
+       Ok = true;
+       aRes.first = aRot2Sur1;
+       aRes.second = aRot3Sur1;
+    }
+    return aRes;
+}
+
+
 
 cResVINM::cResVINM() :
    mCam1    (0),
@@ -290,10 +333,31 @@ CamStenope *  cInterfChantierNameManipulateur::StdCamStenOfNames(const std::stri
      return CamOrientGenFromFile(aNameCam,this);
 }
 
+CamStenope *  cInterfChantierNameManipulateur::StdCamStenOfNamesSVP(const std::string & aNameIm,const std::string & anOri)
+{
+
+     std::string aKey = "NKS-Assoc-Im2Orient@-"+ anOri ;
+     std::string aNameCam =  Assoc1To1(aKey,aNameIm,true);
+     if (! ELISE_fp::exist_file(aNameCam))
+        return 0;
+     return CamOrientGenFromFile(aNameCam,this);
+}
+
 CamStenope * cNewO_NameManager::CamOriOfName(const std::string & aNameIm,const std::string & anOri)
 {
     return mICNM->StdCamStenOfNames(aNameIm,anOri);
 }
+
+CamStenope * cNewO_NameManager::CamOriOfNameSVP(const std::string & aNameIm,const std::string & anOri)
+{
+    std::string aKey = "NKS-Assoc-Im2Orient@-"+ anOri ;
+    std::string aNameCam =  mICNM->Assoc1To1(aKey,aNameIm,true);
+    if (! ELISE_fp::exist_file(aNameCam))
+       return 0;
+    return CamOrientGenFromFile(aNameCam,mICNM);
+}
+
+
 const std::string &   cNewO_NameManager::OriCal() const {return mPrefOriCal;}
 
 
@@ -314,6 +378,14 @@ std::string cNewO_NameManager::NameListeImOrientedWith(const std::string & aName
 {
     return Dir3POneImage(aName) + "ListOrientedsWith-" + aName + (Bin ? ".dmp" : ".xml");
 }
+
+
+std::string cNewO_NameManager::RecNameListeImOrientedWith(const std::string & aName,bool Bin) const
+{
+    return Dir3POneImage(aName) + "RecListOrientedsWith-" + aName + (Bin ? ".dmp" : ".xml");
+}
+
+
 
 std::string cNewO_NameManager::NameListeCpleOriented(bool Bin) const
 {
@@ -337,6 +409,16 @@ std::list<std::string>  cNewO_NameManager::ListeImOrientedWith(const std::string
 {
    return StdGetFromPCP(NameListeImOrientedWith(aName,true),ListOfName).Name();
 }
+
+std::list<std::string>  cNewO_NameManager::Liste2SensImOrientedWith(const std::string & aName) const
+{
+    std::list<std::string>  aRes = ListeImOrientedWith(aName);
+    std::list<std::string> aResRec =  StdGetFromPCP(RecNameListeImOrientedWith(aName,true),ListOfName).Name();
+
+    std::copy(aResRec.begin(),aResRec.end(),std::back_inserter(aRes));
+    return aRes;
+}
+
 
 std::list<std::string>  cNewO_NameManager::ListeCompleteTripletTousOri(const std::string & aN1,const std::string & aN2) const
 {
@@ -488,6 +570,13 @@ std::string cNewO_NameManager::NameOriOptimTriplet(bool ModeBin,cNewO_OneIm *aI1
 {
     return NameAttribTriplet("OriOpt",(ModeBin ? "dmp" : "xml"),aI1,aI2,aI3,WithMakeDir);
 }
+
+std::string cNewO_NameManager::NameOriOptimTriplet(bool ModeBin,const std::string & aN1,const std::string & aN2,const std::string & aN3,bool WithMakeDir)
+{
+    return NameAttribTriplet("OriOpt",(ModeBin ? "dmp" : "xml"),aN1,aN2,aN3,WithMakeDir);
+}
+
+
 
 std::string cNewO_NameManager::NameTopoTriplet(bool aModeBin)
 {

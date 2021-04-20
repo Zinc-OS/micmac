@@ -17,6 +17,11 @@ Apero /home/marc/micmac/include/XML_MicMac/Apero-Ter-Bascule.xml DirectoryChanti
             <Symb>  ShowUnused=true  </Symb>
             <Symb>  CPI=false    </Symb>
 
+	    <Symb>  OutTxt=XXXXX </Symb>
+	    <Symb>  OutJSON=XXXXX </Symb>
+	    <Symb>  BoolOutTxt=false    </Symb>
+	    <Symb>  BoolOutJSON=false    </Symb>
+
             <eSymb>  NotCPI=! ${CPI} </eSymb>
        </DicoLoc>
 
@@ -128,8 +133,21 @@ Apero /home/marc/micmac/include/XML_MicMac/Apero-Ter-Bascule.xml DirectoryChanti
 
 		    </SectionObservations>
 
-                    <SectionExport>
-                    </SectionExport>
+ 		   <SectionExport>
+  			<#IF  VTEST=${BoolOutTxt}>
+                          <ExportPtsFlottant>
+                               <PatternSel > .* </PatternSel>
+                               <NameFileTxt >  ${OutTxt} </NameFileTxt>
+                               <TextComplTxt>   </TextComplTxt>
+                          </ExportPtsFlottant>
+ 		       </#IF>
+  			<#IF  VTEST=${BoolOutJSON}>
+                          <ExportPtsFlottant>
+                               <PatternSel > .* </PatternSel>
+                               <NameFileJSON >  ${OutJSON} </NameFileJSON>
+                          </ExportPtsFlottant>
+ 		       </#IF>
+                   </SectionExport>
 
 
 	      </EtapeCompensation>

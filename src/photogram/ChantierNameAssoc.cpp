@@ -38,7 +38,7 @@ See below and http://www.cecill.info.
 Header-MicMac-eLiSe-25/06/2007*/
 
 #include "general/CMake_defines.h"
-#if (ELISE_QT_VERSION >= 4)
+#if ELISE_QT
     #ifdef Int
         #undef Int
     #endif
@@ -471,6 +471,8 @@ bool ElGetStrSys( const std::string & i_base_cmd, std::string &o_result )
 static std::string ArgvMMDir;
 static std::string CurrentProgramFullName;
 static std::string CurrentProgramSubcommand = "unknown";
+std::string MM3DFixeByMMVII ="";
+
 void MMD_InitArgcArgv(int argc,char ** argv,int aNbMin)
 {
     static bool First=true;
@@ -540,6 +542,10 @@ void MMD_InitArgcArgv(int argc,char ** argv,int aNbMin)
 
             // if which failed then we're doomed
             ELISE_ASSERT( whichSucceed, "MMD_InitArgcArgv : unable to retrieve binaries directory" );
+        }
+        if (MM3DFixeByMMVII !="")
+        {
+           aFullArg0 = MM3DFixeByMMVII ;
         }
 
         std::string aPatProg = "([0-9]|[a-z]|[A-Z]|_)+";
@@ -968,7 +974,6 @@ std::string XML_MM_File(const std::string & aFile)
         mSubDirRec (aSubDirRec)
     {
         // std::cout << "mSubDirRec " << mSubDirRec <<  " " << this<<  "\n";
-        // getchar();
     }
 
     cInterfChantierNameManipulateur * cMultiNC::ICNM()
@@ -1289,7 +1294,6 @@ const cInterfChantierSetNC::tSet  * cSetName::Get()
         std::map<tKey,cSetName *>::iterator anIt = mDico.find(aKeySsArb);
         if (anIt==mDico.end())
         {
-// std::cout << "NO fOUND " << aKeySsArb<<"\n"; getchar();
             return 0;
         }
 
@@ -1871,10 +1875,8 @@ const cInterfChantierSetNC::tSet  * cSetName::Get()
             cNameRelDescriptor & aNRD = *(new cNameRelDescriptor(aSCR->NRD()));
 
             // std::cout << aKey  << "+++" << aVParams[0] << " " << aVParams[1]<< " " << aVParams.size() << "\n";
-            // getchar();
             TransFormArgKey(aNRD,false,aVParams);
             // std::cout << "lllllllllllll\n";
-            // getchar();
             cStdChantierRel * aNewSCR =  new cStdChantierRel(*mGlob,aNRD);
             mRels[aKey] = aNewSCR;
             return true;
@@ -2102,7 +2104,14 @@ std::string cInterfChantierNameManipulateur::NameOriStenope(const tKey & aKeyOri
         {
             const tSet * aSet = mVM[aK]->Get(aKey);
             if (aSet!=0)
+            {
+                if (!MPD_MM()) 
+                {
+                    std::cout<<"\""<<aKey<<"\": "<<aSet->size()<<" matches."<<std::endl;
+                }
+
                 return aSet;
+            }
         }
         {
               std::string aName = GetNameWithoutPerc(aKey);
@@ -2538,19 +2547,19 @@ std::string cInterfChantierNameManipulateur::NameOriStenope(const tKey & aKeyOri
 
     bool MPD_MM()
     {
-        static bool aRes = MMUserEnv().UserName().Val() == "MPD";
+        static bool aRes = MMUserEnv().UserName().ValWithDef("") == "MPD";
         return aRes;
     }
     bool ERupnik_MM()
     {
-        static bool aRes = MMUserEnv().UserName().Val() == "ERupnik";
+        static bool aRes = MMUserEnv().UserName().ValWithDef("") == "ERupnik";
         return aRes;
     }
 
 
 bool DebugConvCal() {return false;}
 
-#if(ELISE_QT_VERSION >= 4)
+#if ELISE_QT
     string MMQtLibraryPath()
     {
         #if defined(__APPLE__) || defined(__MACH__)
@@ -2568,6 +2577,9 @@ bool DebugConvCal() {return false;}
         if ( !QDir(path).exists() ) cerr << "WARNING: setQtLibraryPath(" << i_path << "): path does not exist" << endl;
 
         QCoreApplication::setLibraryPaths( QStringList(path) );
+        // Sometimes the setLibraryPaths change the decimal-point character according the local OS config
+        // to be sure that atof("2.5") is always 2.5 it's necessary to force setLocale
+        setlocale(LC_NUMERIC, "C");
     }
 
     // if default path does not exist, replace it by deployment path
@@ -2604,7 +2616,7 @@ bool DebugConvCal() {return false;}
 
         cerr << "WARNING: initQtLibraryPath: no valid path found" << endl;
     }
-#endif
+#endif // ELISE_QT
 
     std::string MMBin() { return MMDir()+"bin"+ELISE_CAR_DIR; }
 
@@ -2922,7 +2934,7 @@ cInterfChantierNameManipulateur* cInterfChantierNameManipulateur::BasicAlloc(con
     {
 
         tNuplet aRes= isDirect ? Direct(aKey,aVNames)  : Inverse(aKey,aVNames);
-        ELISE_ASSERT(aRes.size()==1,"Multiple res in Assoc1To1");
+        ELISE_ASSERT(aRes.size()==1,"Multiple res in Assoc1ToN");
 
         return aRes[0];
     }
@@ -2955,6 +2967,22 @@ cInterfChantierNameManipulateur* cInterfChantierNameManipulateur::BasicAlloc(con
         return aRes[0];
     }
 
+std::string cInterfChantierNameManipulateur::NameImEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+   return Assoc1To3("NKS-Assoc-NameImEpip@tif",anOri,aIm1,aIm2,true);
+}
+
+std::string cInterfChantierNameManipulateur::NameOrientEpipGen(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+  return Assoc1To2 ( "NKS-Assoc-CplIm2OriGenEpi@"+anOri+"@txt", aIm1,aIm2,true);
+
+}
+
+std::string cInterfChantierNameManipulateur::NameAppuiEpip(const std::string & anOri,const std::string & aIm1,const std::string & aIm2)
+{
+   return Assoc1To3("NKS-Assoc-NameAppuiEpip",anOri,aIm1,aIm2,true);
+}
+
     std::string  cInterfChantierNameManipulateur::Assoc1To3
         (
         const tKey & aKey,
@@ -2971,7 +2999,7 @@ cInterfChantierNameManipulateur* cInterfChantierNameManipulateur::BasicAlloc(con
 
         tNuplet aRes= isDirect ? Direct(aKey,aInput)  : Inverse(aKey,aInput);
 
-        ELISE_ASSERT(aRes.size()==1,"Multiple res in Assoc1To2");
+        ELISE_ASSERT(aRes.size()==1,"Multiple res in Assoc1To3");
 
         return aRes[0];
     }
@@ -2992,7 +3020,7 @@ cInterfChantierNameManipulateur* cInterfChantierNameManipulateur::BasicAlloc(con
 
         tNuplet aRes= isDirect ? Direct(aKey,aInput)  : Inverse(aKey,aInput);
 
-        ELISE_ASSERT(aRes.size()==2,"Multiple res in Assoc1To1");
+        ELISE_ASSERT(aRes.size()==2,"Wrong res number in Assoc2To1");
 
         return std::pair<std::string,std::string>(aRes[0],aRes[1]);
 
@@ -3424,7 +3452,6 @@ void cStdChantierRel::AddAllCpleKeySet
                 {
 
                     const std::vector<std::string> & aVS = itO->Soms();
-                    // std::cout << "SIZ " << aVS.size() << "\n"; getchar();
                     const std::vector<int> & aVI = itO->Delta();
                     for (int aKS=0 ; aKS<int(aVS.size()) ; aKS++)
                     {
@@ -3611,16 +3638,18 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
     // return  Tiff_Im(aName.c_str());
 }
 
-    void DoSimplePastisSsResol(const std::string & aFullName,int aResol)
+    void DoSimplePastisSsResol(const std::string & aFullName,int aResol,bool forceTMP)
     {
         std::string aDir,aName;
         SplitDirAndFile(aDir,aName,aFullName);
 
         Tiff_Im aTF = PastisTif(aFullName); // Tiff_Im::StdConvGen(aFullName,1,false);
 
+        Pt2di aSz = aTF.sz();
+
+        if (forceTMP&&(aResol<=0)) aResol=aSz.x;
         if (aResol <=0) return;
 
-        Pt2di aSz = aTF.sz();
         double aScale = double(aResol) / double(ElMax(aSz.x,aSz.y));
         double  Arrondi = 10;
         int iScale = round_ni((1/aScale) * Arrondi);
@@ -3637,7 +3666,7 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
 
         if (! ELISE_fp::exist_file(aNameFinal))
         {
-           ELISE_fp::MkDirRec( outDirectory+"Pastis"+ELISE_CAR_DIR );
+            ELISE_fp::MkDirRec( outDirectory+"Pastis"+ELISE_CAR_DIR );
             Pt2di aSzF = round_down(Pt2dr(aSz)*aScale);
             Tiff_Im aNewF
                 (
@@ -3666,19 +3695,19 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
 
 
     cCompileCAPI::cCompileCAPI
-        (
-        cInterfChantierNameManipulateur & aIMCN,
+        (cInterfChantierNameManipulateur & aIMCN,
         const cContenuAPrioriImage & aCAPI,
         const std::string &aDir,
         const std::string & aName,
-        const std::string & aName2
+        const std::string & aName2,
+        bool forceTMP
         ) :
     mScale     (aCAPI.Scale().Val()),
         mTeta      (aCAPI.Teta().Val()),
         mBox       (Pt2dr(0,0),Pt2dr(0,0)),
         mRTr_I2R   (Pt2dr(0,0),Pt2dr(1,0)),
         mRTr_R2I   (Pt2dr(0,0),Pt2dr(1,0))
-    {
+    {        
         std::string aNameInit = aDir+aName;
         if ( isUsingSeparateDirectories() && !ELISE_fp::exist_file(aNameInit) ) aNameInit = MMInputDirectory()+aName;
         mFullNameFinal = aNameInit;
@@ -3730,7 +3759,7 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
 
         Pt2di aSzInit = mBox._p1 - mBox._p0;
 
-        if ((mScale !=1.0) || (mTeta!=0.0) ||  aWithBox)
+        if ((mScale !=1.0) || (mTeta!=0.0) ||  aWithBox || forceTMP)
         {
             double  Arrondi = 10;
             int iScale = round_ni(mScale * Arrondi);
@@ -3739,7 +3768,7 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
             int  iTeta = round_ni(mTeta);
             mTeta = iTeta;
             string pastisDirectory = ( isUsingSeparateDirectories()?MMOutputDirectory():aDir )+"Pastis"+ELISE_CAR_DIR;
-      ELISE_fp::MkDir(pastisDirectory);
+            ELISE_fp::MkDir(pastisDirectory);
             mFullNameFinal = pastisDirectory
                 + aStrBox
                 + std::string("Resol") + ToString(iScale)
@@ -3949,7 +3978,8 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
         const std::string & aN2,
         const std::string & aKEY1,
         const std::string & aKEY2,
-        double aSzMax
+        double aSzMax,
+        bool forceTMP
         )
     {
         cContenuAPrioriImage aC1 = APrioriWithDef(aN1,aKEY1);
@@ -3993,8 +4023,8 @@ Tiff_Im PastisTif(const std::string &  aNameOri)
         std::pair<cCompileCAPI,cCompileCAPI> aRes;
 
         string outDirectory = ( isUsingSeparateDirectories()?MMOutputDirectory():mDir );
-        aRes.first  = cCompileCAPI(*this,aC1,outDirectory,aN1,aN2);
-        aRes.second = cCompileCAPI(*this,aC2,outDirectory,aN2,aN1);
+        aRes.first  = cCompileCAPI(*this,aC1,outDirectory,aN1,aN2,forceTMP);
+        aRes.second = cCompileCAPI(*this,aC2,outDirectory,aN2,aN1,forceTMP);
 
         return  aRes;
     }
@@ -4173,6 +4203,16 @@ cResulMSO cInterfChantierNameManipulateur::MakeStdOrient
         return aResult;
 }
 
+/*
+bool FromString(std::vector<std::string> &aRes ,const std::string & aStr)
+{
+    stringstream aStream(aStr);
+    ElStdRead(aStream,aRes,ElGramArgMain::StdGram);
+    return true;
+}
+*/
+
+
 std::vector<std::string> cInterfChantierNameManipulateur::StdGetVecStr(const std::string & aStr)
 {
       std::vector<std::string>  aRes;
@@ -4241,7 +4281,7 @@ bool StdCorrecNameOrient(std::string & aNameOri,const std::string & aDir,bool SV
     return anICNM->CorrecNameOrient(aNameOri,SVP);
 }
 
-
+#define NBExtTifMas 1
 bool  TestStdMasq
     (
         const std::string & aManquant,
@@ -4250,18 +4290,20 @@ bool  TestStdMasq
         std::string & aMasq
     )
 {
-
+    std::string aVExt[NBExtTifMas] = {"tif"}; // ,"tiff","TIF","TIFF"};
     cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc(aDir);
-
     std::list<std::string> aL = anICNM->StdGetListOfFile(aPat,1);
 
     for (std::list<std::string>::const_iterator itS=aL.begin(); itS!=aL.end() ; itS++)
     {
-        std::string aName =  aDir + StdPrefix(*itS) + aManquant + aMasq + ".tif";
-        if ( ELISE_fp::exist_file(aName))
+        for (int aKExt=0 ; aKExt<NBExtTifMas; aKExt++)
         {
-           aMasq = aManquant+aMasq;
-           return true;
+            std::string aName =  aDir + StdPrefix(*itS) + aManquant + aMasq + "." + aVExt[aKExt];
+            if ( ELISE_fp::exist_file(aName))
+            {
+               aMasq = aManquant+aMasq;
+               return true;
+            }
         }
     }
 
@@ -4353,35 +4395,35 @@ TestStdMasq("Masq",aDir,aPat,aMasq);
 TestStdMasq("_Masq",aDir,aPat,aMasq);
 */
 
-/*Footer-MicMac-eLiSe-25/06/2007
+/* Footer-MicMac-eLiSe-25/06/2007
 
-Ce logiciel est un programme informatique servant �  la mise en
+Ce logiciel est un programme informatique servant a la mise en
 correspondances d'images pour la reconstruction du relief.
 
-Ce logiciel est régi par la licence CeCILL-B soumise au droit français et
+Ce logiciel est regi par la licence CeCILL-B soumise au droit francais et
 respectant les principes de diffusion des logiciels libres. Vous pouvez
 utiliser, modifier et/ou redistribuer ce programme sous les conditions
-de la licence CeCILL-B telle que diffusée par le CEA, le CNRS et l'INRIA
+de la licence CeCILL-B telle que diffusee par le CEA, le CNRS et l'INRIA
 sur le site "http://www.cecill.info".
 
-En contrepartie de l'accessibilité au code source et des droits de copie,
-de modification et de redistribution accordés par cette licence, il n'est
-offert aux utilisateurs qu'une garantie limitée.  Pour les mêmes raisons,
-seule une responsabilité restreinte pèse sur l'auteur du programme,  le
-titulaire des droits patrimoniaux et les concédants successifs.
+En contrepartie de l'accessibilite au code source et des droits de copie,
+de modification et de redistribution accordes par cette licence, il n'est
+offert aux utilisateurs qu'une garantie limitee.  Pour les memes raisons,
+seule une responsabilite restreinte pese sur l'auteur du programme,  le
+titulaire des droits patrimoniaux et les concedants successifs.
 
-A cet égard  l'attention de l'utilisateur est attirée sur les risques
-associés au chargement,  �  l'utilisation,  �  la modification et/ou au
-développement et �  la reproduction du logiciel par l'utilisateur étant
-donné sa spécificité de logiciel libre, qui peut le rendre complexe �
-manipuler et qui le réserve donc �  des développeurs et des professionnels
-avertis possédant  des  connaissances  informatiques approfondies.  Les
-utilisateurs sont donc invités �  charger  et  tester  l'adéquation  du
-logiciel �  leurs besoins dans des conditions permettant d'assurer la
-sécurité de leurs systèmes et ou de leurs données et, plus généralement,
-�  l'utiliser et l'exploiter dans les mêmes conditions de sécurité.
+A cet egard  l'attention de l'utilisateur est attiree sur les risques
+associes au chargement,  a l'utilisation,  a la modification et/ou au
+developpement et a la reproduction du logiciel par l'utilisateur etant
+donne sa specificite de logiciel libre, qui peut le rendre complexe a
+manipuler et qui le reserve donc a des developpeurs et des professionnels
+avertis possedant  des  connaissances  informatiques approfondies.  Les
+utilisateurs sont donc invites a charger  et  tester  l'adequation  du
+logiciel a leurs besoins dans des conditions permettant d'assurer la
+securite de leurs systemes et ou de leurs donnees et, plus generalement,
+a l'utiliser et l'exploiter dans les memes conditions de securite.
 
-Le fait que vous puissiez accéder �  cet en-tête signifie que vous avez
-pris connaissance de la licence CeCILL-B, et que vous en avez accepté les
+Le fait que vous puissiez acceder a cet en-tete signifie que vous avez
+pris connaissance de la licence CeCILL-B, et que vous en avez accepte les
 termes.
-Footer-MicMac-eLiSe-25/06/2007*/
+Footer-MicMac-eLiSe-25/06/2007/*/

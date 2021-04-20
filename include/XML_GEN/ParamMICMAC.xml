@@ -64,6 +64,7 @@
 	   <eMCC_GrCensus >          </eMCC_GrCensus>
            <eMCC_CensusBasic >       </eMCC_CensusBasic>
            <eMCC_CensusCorrel >      </eMCC_CensusCorrel>
+           <eMCC_CensusQuantitatif >      </eMCC_CensusQuantitatif>  <!-- Somme des ratio / pix central -->
            <eMCC_CensusMixCorrelBasic >      </eMCC_CensusMixCorrelBasic>
    </enum>
 
@@ -308,6 +309,10 @@
        <SeuilUse  Nb="1" Type="int">  </SeuilUse>
   </MetaDataPartiesCachees>
 -->
+  <XML_RatioCorrImage Nb="1" Class="true" ToReference="true">
+      <Ratio Nb="1" Type="double"> </Ratio>
+      <NbPt Nb="?" Type="int"> </NbPt>
+  </XML_RatioCorrImage>
 
 
   <CorrectionPxTransverse Nb="1" Class="true" ToReference="true">
@@ -949,12 +954,21 @@ est obligatoirement un Tiff; si false ce peut etre eventuellement un raw data,
 
 
 
-                <TypeCAH Nb="1" Union="true">
+                <!-- Plus union car peut avoir CensusCost + MultiCorrelPonctuel-->
+
+                <TypeCAH Nb="1" >
                         <CensusCost Nb="?" AccessorFils="false">
+                              <!-- Utilisable pour rehausser la dynamique tres basse des points census-->
+                              <Dyn    Type="double" Def="1.0" Nb="?">  </Dyn>
+
+                              <!-- Unused
                               <PdsCrown  Type="double" Def="0.5" Nb="?"> </PdsCrown>
+                              -->
                               <TypeCost Type="eModeCensusCost" Nb="1">   </TypeCost>
                               <Verif Type="bool" Nb="?" Def="false">   </Verif>
+                              <!-- Dans Census basic -->
                               <AttenDist  Type="double" Def="0.0" Nb="?"> </AttenDist>
+                              <!-- Uniquement si on mixte avec correl standard -->
                               <SeuilHautCorMixte Type="double" Def="0.8" Nb="?"> </SeuilHautCorMixte>
                               <SeuilBasCorMixte Type="double" Def="0.6" Nb="?">  </SeuilBasCorMixte>
                         </CensusCost>
@@ -979,9 +993,14 @@ est obligatoirement un Tiff; si false ce peut etre eventuellement un raw data,
 
                         <MultiCorrelPonctuel Nb="?"  AccessorFils="false">
                                 <PdsCorrelStd   Nb="1" Type="double" > </PdsCorrelStd>
-                                <PdsCorrelPonct Nb="1" Type="double" > </PdsCorrelPonct>
+                                <PdsCorrelCroise Nb="1" Type="double" > </PdsCorrelCroise>
+                                <DynRadCorrelPonct Nb="?" Type="double" Def="1.0" > </DynRadCorrelPonct>
                                 <DefCost  Nb="?" Type="double" Def="0.1"> </DefCost>
-                                <UnUsedTest Nb="?" Type="std::string"> </UnUsedTest>
+                                <MCP_AttachePixel Nb="?">
+                                      <Pds Nb="1" Type="double"> </Pds>
+                                      <!-- Si xml => fichier des valeur constantes, sinon cle de calcul de l'image -->
+                                      <KeyRatio Nb="1" Type="std::string"> </KeyRatio>
+                                </MCP_AttachePixel>
                         </MultiCorrelPonctuel>
 
 

@@ -37,11 +37,179 @@ English :
 
 Header-MicMac-eLiSe-25/06/2007*/
 
+#include "Vino.h"
 #include "general/sys_dep.h"
+
+/***********************************************************/
+/*                                                         */
+/*      Auto Correl                                        */
+/*                                                         */
+/***********************************************************/
+
+namespace AimeImageAutoCorrel
+{
+
+     // =============== cOneICAIAC  ====   
+
+cOneICAIAC::cOneICAIAC(int aTx,int aTy) :
+     mTx     (aTx),
+     mTy     (aTy),
+     mImCor  (mTx,mTy),
+     mTImCor (mImCor),
+     mImVis  (mTx,mTy)
+{
+}
+
+void cOneICAIAC::MakeImVis(bool isRobust) 
+{
+   mImVis = MakeImI1(isRobust,mImCor);
+};
+void cOneICAIAC::MakeTiff(const std::string & aName)
+{
+     Tiff_Im::Create8BFromFonc(aName,mImVis.sz(),mImVis.in()+128);
+}
+
+
+     // =============== cAimeImAutoCorr  ====   
+cAimeImAutoCorr::cAimeImAutoCorr(Im2D_INT1 anIm) :
+    mSz      (anIm.sz()),
+    mNbR     (mSz.x),
+    mNbT0    (mSz.y)
+{
+}
+
+
+
+     // cCalcAimeImAutoCorr
+
+double cCalcAimeImAutoCorr::AutoCorrelR0(int aRho,int aDTeta)
+{
+    ELISE_ASSERT(aDTeta>=0,"cCalcAimeImAutoCorr::AutoCorrel");
+    double aRes = 0;
+
+    for (int aKT=0 ; aKT<mNbT0 ; aKT++)
+    {
+        double aV0 =  mTImInit.get(Pt2di(aRho,aKT));
+        double aVD =  mTImInit.get(Pt2di(aRho,(aKT+aDTeta)%mNbT0));
+
+        aRes +=  aV0 * aVD;
+    }
+    return aRes;
+}
+
+double cCalcAimeImAutoCorr::AutoCorrelGT(int aRho,int aDTeta)
+{
+    ELISE_ASSERT(aDTeta>=0,"cCalcAimeImAutoCorr::AutoCorrel");
+    double aRes = 0;
+
+    for (int aKT=0 ; aKT<mNbT0 ; aKT++)
+    {
+        double aV0 =  mTImInit.get(Pt2di(aRho,aKT));
+        double aV1 =  mTImInit.get(Pt2di(aRho,(aKT+1)%mNbT0));
+        double aVD =  mTImInit.get(Pt2di(aRho,(aKT+aDTeta)%mNbT0));
+
+        aRes +=  (aV1-aV0) * aVD;
+    }
+    return aRes;
+}
+
+double cCalcAimeImAutoCorr::AutoCorrelGR(int aRho,int aDTeta)
+{
+    ELISE_ASSERT(aDTeta>=0,"cCalcAimeImAutoCorr::AutoCorrel");
+    double aRes = 0;
+
+    for (int aKT=0 ; aKT<mNbT0 ; aKT++)
+    {
+        double aV0 =  mTImInit.get(Pt2di(aRho,aKT));
+        double aV1 =  mTImInit.get(Pt2di(aRho-1,aKT));
+        double aVD =  mTImInit.get(Pt2di(aRho,(aKT+aDTeta)%mNbT0));
+
+        aRes +=  (aV1-aV0) * aVD;
+    }
+    return aRes;
+}
+
+
+
+#if  PB_LINK_AUTOCOR // PB LINK INCOMPREHENSIBLE  Ann + Micmac + Qt => ?@&#!!!
+#else
+
+
+cCalcAimeImAutoCorr::cCalcAimeImAutoCorr(Im2D_INT1 anIm,bool L1Mode) :
+    cAimeImAutoCorr (anIm),
+    mImInit         (anIm),
+    mTImInit        (anIm),
+    mL1Mode         (L1Mode),
+    mIR0            (mNbR,mNbT0/2),
+    mIGR            (mNbR-1,mNbT0),
+    mIGT            (mNbR,mNbT0/2)
+/*
+    mTImCor         (mImCor),
+    mImVis          (1,1)
+*/
+{
+    int aSzTetaR0 =  mIR0.mImCor.sz().y;
+    int aSzTetaGT =  mIGT.mImCor.sz().y; // GT being anti symetric, take only half size
+    for (int aKT=0 ; aKT<mNbT0 ; aKT++)
+    {
+        double aS0=0;
+        double aS1=0;
+        double aS2=0;
+        bool DoR0 = aKT < aSzTetaR0;
+        bool DoGT = aKT < aSzTetaGT;
+        for (int aKR=0 ; aKR<mNbR ; aKR++)
+        {
+           
+            if (DoR0)
+            {
+                double aC = AutoCorrelR0(aKR,aKT+1);
+                aS0 += 1;
+                aS1 += aC;
+                aS2 += ElSquare(aC);
+                mIR0.mTImCor.oset(Pt2di(aKR,aKT),aC);
+            }
+
+            // double  aC = AutoCorrelGR(aKR,aKT+1); 
+            if (DoGT)
+            {
+               mIGT.mTImCor.oset(Pt2di(aKR,aKT),AutoCorrelGT(aKR,aKT));
+            }
+            if (aKR>=1)
+            {
+               mIGR.mTImCor.oset(Pt2di(aKR-1,aKT),AutoCorrelGR(aKR,aKT));
+            }
+        }
+        if (DoR0)
+        {
+            aS1 /= aS0;
+            aS2 /= aS0;
+            aS2 -= ElSquare(aS1);
+            double aSig = sqrt(ElMax(1e-10,aS2));
+            for (int aKR=0 ; aKR<mNbR ; aKR++)
+            {
+                double  aC =  mIR0.mTImCor.get(Pt2di(aKR,aKT));
+                mIR0.mTImCor.oset(Pt2di(aKR,aKT),(aC-aS1)/aSig);
+            }
+        }
+    }
+    mIR0.MakeImVis(mL1Mode);
+    mIGT.MakeImVis(mL1Mode);
+    mIGR.MakeImVis(mL1Mode);
+/*
+    CalcImVis(mImCor,mImVis);
+    double aVMax,aVMin;
+    ELISE_COPY(mImCor.all_pts(),mImCor.in(),VMax(aVMax)|VMin(aVMin));
+    double aDyn = 127.0/ ElMax(1e-10,ElMax(-aVMin,aVMax));
+    ELISE_COPY(mImCor.all_pts(),round_ni(mImCor.in()*aDyn),mImVis.out());
+*/
+}
+#endif 
+
+};
+
 
 #if (ELISE_X11)
 
-#include "Vino.h"
 
 /****************************************/
 /*                                      */
@@ -123,6 +291,8 @@ void cAppli_Vino::ShowAsc()
 
    std::string aStrZoom = "Zoom=" + StrNbChifSign(mScr->sc(),3); // ToString(mScr->sc()); 
    mW->fixed_string(Pt2dr(5,10),aStrZoom.c_str(),mW->pdisc()(P8COL::black),true);
+
+   ShowVect();
 }
 
 
@@ -227,6 +397,279 @@ void cAppli_Vino::ExeClikGeom(Clik aCl)
          }
      }
      ShowAsc();
+}
+
+
+/**************** A mettre dans un autre fichier Show/Inspect-Vect ******/
+
+void cAppli_Vino::ShowVect()
+{
+   if (mWithPCarac) 
+      ShowVectPCarac();
+}
+
+int  cAppli_Vino::IndexNearest(double aDistSeuil,const Pt2dr & aPClU,double * aDist,eTypePtRemark aType)
+{
+   cVecTplResRVoisin<cOnePCarac *> aVRV;
+   mQTPC->RVoisins(aVRV,aPClU,aDistSeuil);
+
+
+   // mAppli.Qt2()->KPPVois(aP0,2,100.0);
+   cOnePCarac * aRes=nullptr;
+   double aDMin=1e20;
+   // for (int aKP=0 ; aKP<int(mSPC->OnePCarac().size()) ; aKP++)
+   for (const auto & aPCP : static_cast<std::vector<cOnePCarac *> &>(aVRV) )
+   {
+       // const auto & aPC = mSPC->OnePCarac()[aKP];
+       double aDist = euclid(aPCP->Pt(),aPClU);
+       if (  ((aPCP->Kind()==aType)||(aType==eTPR_NoLabel)) && (aDist<aDMin))
+       {
+          aDMin = aDist;
+          aRes = aPCP;
+       }
+   }
+   if (aDist) 
+      *aDist = aDMin;
+   int anIndex =  (aRes ? aRes->Id() : -1);
+   return anIndex;
+}
+
+const cOnePCarac * cAppli_Vino::Nearest(double aDistSeuil,const Pt2dr & aPClU,double * aDist,eTypePtRemark aType)
+{
+    int I = IndexNearest(aDistSeuil,aPClU,aDist,aType);
+    if (I>=0) return &(mSPC->OnePCarac()[I]);
+    return nullptr;
+}
+
+void ShowCurve(Im2D_INT1 aIm,int aY,const Pt2di & aP0,const Pt2di & aP1,Video_Win * aW,int aCoul)
+{
+   int aTx = aIm.tx();
+   // std::cout << "TXxxx= " << aTx << "\n";
+   INT1 * aV = aIm.data()[aY];
+   double aVmax = aV[0];
+   double aVmin = aV[0];
+   for (int anX=1 ; anX<aTx ; anX++)
+   {
+      aVmin = ElMin(aVmin,double(aV[anX]));
+      aVmax = ElMax(aVmax,double(aV[anX]));
+   }
+
+   std::vector<double> aVX;
+   std::vector<double> aVY;
+   for (int anX=0 ; anX<aTx ; anX++)
+   {
+        aVX.push_back(aP0.x+ ( anX /double(aTx-1)) * (aP1.x-aP0.x));
+        aVY.push_back(aP0.y+ ((aV[anX]-aVmin) /(aVmax-aVmin) ) * (aP1.y-aP0.y));
+   }
+   ELISE_COPY ( rectangle(aP0,aP1), 255, aW->ogray());
+   
+   for (int anX=1 ; anX<int(aTx) ; anX++)
+   {
+       aW->draw_seg
+       (
+           Pt2dr(aVX[anX-1],aVY[anX-1]),
+           Pt2dr(aVX[anX],aVY[anX]),
+           aW->pdisc()(aCoul)
+       );
+   }
+}
+
+
+//======================================================================
+//======================================================================
+
+/*
+    double aVMax,aVMin;
+    ELISE_COPY(aImCor.all_pts(),aImCor.in(),VMax(aVMax)|VMin(aVMin));
+    double aDyn = 127.0/ ElMax(1e-10,ElMax(-aVMin,aVMax));
+    ELISE_COPY(aImCor.all_pts(),round_ni(aImCor.in()*aDyn),aImVis.out());
+*/
+
+void cAppli_Vino::ShowImCA(int aDx,int aDy,Im2D_INT1 aIm)
+{
+    double aVMax,aVMin;
+    ELISE_COPY(aIm.all_pts(),aIm.in(),VMax(aVMax)|VMin(aVMin));
+    double aDyn = 127.0/ ElMax(1e-10,ElMax(-aVMin,aVMax));
+
+
+    Pt2di aSz = aIm.sz();
+    ELISE_COPY
+    (
+        rectangle(Pt2di(aDx,aDy),Pt2di(aDx+aSz.y*mZoomCA,aDy+aSz.x*mZoomCA)),
+        Max(0,Min(255,128+aDyn*aIm.in()[Virgule(FY-aDy,FX-aDx)/mZoomCA])),
+        mW->ogray()
+    );
+}
+
+
+void  cAppli_Vino::ShowSPC(const Pt2dr & aPClW)
+{
+   ElSimilitude aU2W = mScr->to_win();
+   ElSimilitude aW2U = mScr->to_user();
+   Pt2dr aPClU = aW2U(aPClW);
+
+   mW->draw_circle_loc(aPClW,3.0,mW->pdisc()(P8COL::cyan));
+
+   const cOnePCarac *  aNearest = Nearest(1000.0,aPClU);
+   if (aNearest)
+   {
+       // mW->draw_circle_loc(aU2W(aNearest->Pt()),3.0,mW->pdisc()(P8COL::magenta));
+       // mW->draw_circle_loc(aU2W(aNearest->Pt()),5.0,mW->pdisc()(P8COL::magenta));
+
+       double aSc = mScr->sc();
+       for (const auto & aRho : aNearest->VectRho())
+       {
+           mW->draw_circle_loc(aU2W(aNearest->Pt()),aSc*aRho,mW->pdisc()(P8COL::magenta));
+       }
+       if (!mAVSI.empty())
+          std::cout << "#########################################################\n";
+
+       std::cout << "PTT=" << aNearest->Pt() << mNameIm <<  "\n";
+       std::cout << "  * Id= : " << aNearest->Id() << "\n";
+       std::cout << "  * AutoC : " << aNearest->AutoCorrel() << "\n";
+       std::cout << "  * Scale : "      << aNearest->Scale()      << "\n";
+       std::cout << "  * SStab : "      << aNearest->ScaleStab()      << "\n";
+       std::cout << "  * Contr : "      << aNearest->Contraste()  << " Rel : " << aNearest->ContrasteRel()   << "\n";
+       std::cout << "Rhoooo " << aNearest->VectRho() << "\n";
+
+       std::cout << "\n";
+
+       {
+          Im2D_INT1 aImLogT = aNearest->ImLogPol();
+          Pt2di aSz = aImLogT.sz();
+
+
+          ELISE_COPY
+          (
+              rectangle(Pt2di(0,0),Pt2di(aSz.y*mZoomCA,aSz.x*mZoomCA)),
+              Max(0,Min(255,128 + 2 * aImLogT.in()[Virgule(FY,FX)/mZoomCA])),
+              mW->ogray()
+          );
+
+
+
+
+          int aMarge = 5;
+          int aSzW    = 45;
+          int aPer = 8;
+
+          bool ShowInvRad = true;
+          bool ShowProfRad = true;
+
+          std::vector<Im2D_INT1> aVIm2Show;
+          if (ShowInvRad) 
+             aVIm2Show.push_back(aNearest->InvR().ImRad());
+          if (ShowProfRad) 
+          {
+             aVIm2Show.push_back(aNearest->ProfR().ImProfil());
+          }
+
+          int aCpt = 0;
+          for (int  aKIm =0 ; aKIm<int(aVIm2Show.size()) ; aKIm++)
+          {
+               int aNbY = aVIm2Show[aKIm].sz().y;
+               for (int anY=0 ; anY<aNbY ; anY++)
+               {
+                     int aX0 =  aMarge+(aCpt%aPer) * (aMarge+aSzW);
+                     int aX1 =  aX0 + aSzW;
+
+                     int aY0 =  aSz.x*mZoomCA + aMarge+(aCpt/aPer) * (aMarge+aSzW);
+                     int aY1 = aY0 + aSzW;
+                     ShowCurve
+                     (
+                         aVIm2Show[aKIm],
+                         anY,
+                         Pt2di(aX0,aY0), Pt2di(aX1,aY1),
+                         mW,
+                         1 + (anY%6)
+                     );
+                     aCpt++;
+               }
+          }
+
+          ShowImCA(  aSz.y*mZoomCA + 10,0,aNearest->RIAC().IGT());
+          ShowImCA(2*aSz.y*mZoomCA + 20,0,aNearest->RIAC().IGR());
+          ShowImCA(3*aSz.y*mZoomCA + 30,0,aNearest->RIAC().IR0());
+       }
+
+       if (! mVptHom.empty())
+       {
+           int  aK = IndexNearest(1000.0,aPClU);
+           ELISE_ASSERT((aK>=0) && aNearest==&(mSPC->OnePCarac()[aK]),"NEAREST !!??");
+           const cOnePCarac * aPCHom = mVptHom.at(aK);
+           if (aPCHom)
+           {
+               ElSimilitude aHU2W =  mAVSI.at(0)->mScr->to_win();
+               Pt2dr aPt = aHU2W(aPCHom->Pt());
+               std::cout << "HOMMM " << aPt << "\n";
+               mAVSI.at(0)->ShowSPC(aPt);
+
+               TestMatchInvRad(mSPC->OnePCarac(),aNearest,aPCHom);
+           }
+       }
+   }
+}
+
+
+void cAppli_Vino::ShowVectPCarac()
+{
+   ElSimilitude aSim = mScr->to_win();
+
+   if (mSPC)
+   {
+       for (int aKP=0 ; aKP<int(mSPC->OnePCarac().size()) ; aKP++)
+       {
+           const cOnePCarac & aPC = mSPC->OnePCarac()[aKP];
+           Pt2dr aPU = aPC.Pt();
+           Pt2dr aPW = aSim(aPU);
+           if (   (aPW.x>0) && (aPW.y>0) && (aPW.x<SzW().x) && (aPW.y<SzW().y) 
+               && (aPC.ContrasteRel()>mSeuilContRel) &&   (aPC.AutoCorrel()< mSeuilAC)
+              )
+           {
+               mW->draw_circle_loc(aPW,aPC.Scale()*2*mScr->sc(),mW->pdisc()(P8COL::yellow));
+ 
+               bool HighL =  (mVptHom.size() && mVptHom.at(aKP));
+               ShowPt(aPC,aSim,mW,HighL);
+               // Pt2dr aDirMS = aPC.DirMS();
+               Pt2dr aDirMS = aPC.DirAC();
+// std::cout << "aDirMS " << aDirMS << "\n";
+               if (euclid(aDirMS) != 0)
+               {
+                   aDirMS =  vunit(aDirMS) * 20.0;
+                   mW->draw_seg(aPW,aPW+aDirMS,mW->pdisc()(P8COL::green));
+               }
+           }
+           else
+           {
+              // std::cout << "FfFffff " << aPU << " " << aPW << "\n";
+           }
+       }
+   }
+   if (mVSift.size())
+   {
+       for (const auto & aSP : mVSift)
+       {
+           Pt2dr aPU(aSP.x*mSSF,aSP.y*mSSF);
+           Pt2dr aPW = aSim(aPU);
+           if ((aPW.x>0) && (aPW.y>0) && (aPW.x<SzW().x) && (aPW.y<SzW().y))
+           {
+               mW->draw_circle_loc(aPW,3.0,mW->pdisc()(P8COL::red));
+               Pt2dr aDir = Pt2dr::FromPolar(20,aSP.angle);
+               mW->draw_seg(aPW,aPW+aDir,mW->pdisc()(P8COL::green));
+               mW->draw_circle_loc(aPW,aSP.scale*2*mScr->sc(),mW->pdisc()(P8COL::yellow));
+               // std::cout << "TETA " <<  aSP.scale << " " << aSP.angle << "\n";
+               //ShowPt(aP,aSim,mW);
+           }
+           else
+           {
+              // std::cout << "FfFffff " << aPU << " " << aPW << "\n";
+           }
+       }
+   }
+   if (mWithAime)
+   {
+        AimeVisu();
+   }
 }
 
 

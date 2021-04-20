@@ -45,6 +45,8 @@ Header-MicMac-eLiSe-25/06/2007*/
 #if ElMemberTpl
 
 #define SzBuf 2000
+std::map<void *,std::string>  MapValuesEAM;
+std::set<void *>  AllAddrEAM;
 
 class cFileDebug
 {
@@ -105,10 +107,10 @@ void OpenFileDebug(const std::string & aName)
 
 std::string TheStringMemoArgOptGlob = "";
 
-static const int TheNbKeyACM=8;
+static const int TheNbKeyACM=9;
 int TheNbProcCom = -1;
 std::string TheSpecMess="";
-const char *  TheKeyACM[TheNbKeyACM] ={"ExitOnBrkp","ExitOnNan","MajickFile","EnBoucle","NbMaxProc","SpecMessage","SFS","ExitOnWarn"};
+const char *  TheKeyACM[TheNbKeyACM] ={"ExitOnBrkp","ExitOnNan","MajickFile","EnBoucle","NbMaxProc","SpecMessage","SFS","ExitOnWarn","GoonOnWarn"};
 
 std::string TheGlobSFS="";
 
@@ -168,6 +170,11 @@ void AnalyseContextCom(int argc,char ** argv)
            else if (aBeforEq==TheKeyACM[7])
            {
                TheExitOnWarn = true;
+               ForAction = true;
+           }
+           else if (aBeforEq==TheKeyACM[8])
+           {
+               TheGoonOnWarn = true;
                ForAction = true;
            }
 /*
@@ -445,6 +452,7 @@ INT LArgMain::Init
     it++
         )
     {
+        MapValuesEAM[(*it)->AddrArg()] = argv[k];
         (*it)->InitEAM(argv[k],ElGramArgMain::StdGram);
         k++;
     }
@@ -555,6 +563,15 @@ LArgMain::~LArgMain()
         delete (*it);
 }
 
+LArgMain & LArgMain::operator << (const LArgMain  & v)
+{
+   for (list<GenElArgMain *>::const_iterator it=v._larg.begin() ; it!=v._larg.end() ; it++)
+       _larg.push_back((*it)->dup());
+
+   return *this;
+}
+
+
 std::list<std::string> ModifListe(const std::list<std::string> & aList,const char * aNameType)
 {
    if (std::string(aNameType)==std::string("bool"))
@@ -612,6 +629,9 @@ bool GenElArgMain::InitIfMatchEq(const ElSTDNS string &s,const ElGramArgMain & G
     const char * N = _name.c_str();
     const char * EQ = s.c_str();
 
+    // std::cout << "HHHHHHHH "  << EQ << " " << AddrArg() << "\n";
+    
+
     while ((*N==* EQ) && *N )
     {
         N++;
@@ -625,6 +645,7 @@ bool GenElArgMain::InitIfMatchEq(const ElSTDNS string &s,const ElGramArgMain & G
                 EQ++;
         }
         InitEAM(ElSTDNS string(EQ+1),Gram);
+        MapValuesEAM[AddrArg()] = s;
         return true;
     }
     return false;
@@ -640,6 +661,14 @@ const char * GenElArgMain::name() const
 {
     return _name.c_str();
 }
+
+// typedef void (*tActionOnHelp)(int argc,char ** argv);
+
+void DefActionOnHelp(int argc,char ** argv)
+{
+}
+
+tActionOnHelp TheActionOnHelp = DefActionOnHelp;
 
 
 
@@ -696,6 +725,7 @@ std::vector<char *>  	ElInitArgMain
     // if ((argc >=1) && (ElSTDNS string(argv[0]) == "-help"))
     if (Help)
     {
+        TheActionOnHelp(argc,argv);
         cout << "*****************************\n";
         cout << "*  Help for Elise Arg main  *\n";
         cout << "*****************************\n";
@@ -1001,7 +1031,11 @@ int System(const std::string & aComOri,bool aSVP,bool AddOptGlob,bool UseTheNbIt
      return aRes;
 }
 
+#ifndef __GNUC__
 void ElExit(int aLine,const char * aFile,int aCode,const std::string & aMessage)
+#else
+void __attribute__((weak)) ElExit(int aLine,const char * aFile,int aCode,const std::string & aMessage)
+#endif
 {
    cFileDebug::TheOne.Close(aCode);
 
@@ -1037,7 +1071,6 @@ int cAppliBatch::System(const char * aFile,const std::string & aCom,bool aSVP)
 {
     if ((aFile!=0) && ByMKf() && (!mIsRelancedByThis))
     {
-        // std::cout << "JJJJJ " << aCom   << "  ## " << aFile << "\n";
         mGPAO.GetOrCreate(aFile,aCom);
         return 0;
     }
@@ -1518,13 +1551,13 @@ const std::string & cAppliBatch::ThisBin() const
 
 
 
-std::set<void *>  AllAddrEAM;
 
 bool EAMIsInit(void * anAdr)
 {
     return (AllAddrEAM.find(anAdr)) != AllAddrEAM.end();
 }
 
+std::string StrInitOfEAM(void * anAdr) {return MapValuesEAM[anAdr];}
 
 // protect spaces with backslashes (for use with 'make')
 string protect_spaces( const string &i_str )

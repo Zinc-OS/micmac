@@ -41,6 +41,7 @@ Header-MicMac-eLiSe-25/06/2007*/
 #define _ELISE_NEW_ORI_H
 
 #include "StdAfx.h"
+#include "Extern_NewO.h"
 
 #define NbCamTest 6
 
@@ -63,9 +64,9 @@ Header-MicMac-eLiSe-25/06/2007*/
 //  #define  TNbMinPMul 8  // Nombre de point triple minimal pour un triplet
 #define  TAttenDens 3.0
 
-#define TNbMinTriplet 3    // Nombre de point triple minimal pour un triplet
-#define TStdNbMaxTriplet 20   // Nombre maximal de triplet calcule
-#define TQuickNbMaxTriplet 8   // Nombre maximal de triplet calcule
+//#define TNbMinTriplet 8    // Nombre de point triple minimal pour un triplet // er: added to cCommonMartiniAppli class
+//#define TStdNbMaxTriplet 20   // Nombre maximal de triplet calcule  // er:  added to cCommonMartiniAppli class
+//#define TQuickNbMaxTriplet 3   // Nombre maximal de triplet calcule // er:  added to cCommonMartiniAppli class
 #define TGainSeuil    5e-3
 
 #define NbMaxATT 100000
@@ -91,13 +92,60 @@ ElPackHomologue PackReduit(const ElPackHomologue & aPack,int aNbInit,int aNbFin)
 ElPackHomologue PackReduit(const ElPackHomologue & aPack,int aNbFin);
 
 
+class cCommonMartiniAppli
+{
+    public :
+
+
+       std::string    mNameOriCalib;
+       std::string    mPrefHom;
+       std::string    mExtName;
+       bool           mExpTxt;
+       std::string    mInOri;
+       std::string    mOriOut;
+       std::string    mOriGPS;
+       std::string    mOriCheck;
+       bool           mDebug;
+       //  std::string    mBlinis;
+       bool           mAcceptUnSym;
+       bool           mQuick;
+       bool           mShow;
+       // const std::string &   NameNOMode();
+       int mTStdNbMaxTriplet;
+       int mTQuickNbMaxTriplet;
+       int mTNbMinTriplet;
+
+       eTypeModeNO    ModeNO() const;
+       cNewO_NameManager * NM(const std::string & aDir) const;
+       LArgMain &     ArgCMA();
+       std::string    ComParam();
+       cCommonMartiniAppli();
+       
+       bool GpsIsInit();
+       bool CheckIsInit();
+       Pt3dr GpsVal(cNewO_OneIm *);
+       CamStenope * CamCheck(cNewO_OneIm *);
+      
+    private :
+       LArgMain * mArg;
+       mutable bool       mPostInit;
+       mutable cNewO_NameManager * mNM;
+       std::string    mNameNOMode;
+       mutable eTypeModeNO   mModeNO;
+
+       void PostInit() const;
+       cCommonMartiniAppli(const cCommonMartiniAppli &) ; // N.I.
+};
+
+
 class cNewO_OneIm
 {
     public :
             cNewO_OneIm
             (
                  cNewO_NameManager & aNM,
-                 const std::string  & aName
+                 const std::string  & aName,
+                 bool  WithOri = true
             );
 
             CamStenope * CS();
@@ -140,15 +188,20 @@ class cNewO_OrInit2Im
                 cNewO_OneIm * aI1,
                 cNewO_OneIm * aI2,
                 tMergeLPackH *      aMergeTieP,
-                ElRotation3D *      aTesSol,
+                ElRotation3D *      aTestSol,
+                ElRotation3D *      aInOri,
                 bool                Show,
                 bool                aHPP,
-                bool                aSelAllIm
+                bool                aSelAllIm,
+                cCommonMartiniAppli &
           );
 
           double ExactCost(const ElRotation3D & aRot,double aTetaMax) const;
           double PixExactCost(const ElRotation3D & aRot,double aTetaMax) const;
           const cXml_Ori2Im &  XmlRes() const;
+          void DoExpMM();
+          void DoExpMM(cNewO_OneIm *,const ElRotation3D &,const Pt3dr & aPMed);
+
     private :
 
 
@@ -183,6 +236,7 @@ class cNewO_OrInit2Im
 
 
 
+          double            mPdsSingle;
           bool              mQuick;
           cNewO_OneIm *     mI1;
           cNewO_OneIm *     mI2;
@@ -268,6 +322,7 @@ class cNewO_NameManager : public cVirtInterf_NewO_NameManager
 
            // 
            CamStenope * CamOriOfName(const std::string & aName,const std::string & anOri);
+           CamStenope * CamOriOfNameSVP(const std::string & aName,const std::string & anOri);
            const std::string &  OriCal() const;
            const std::string &  OriOut() const;
            cInterfChantierNameManipulateur *  ICNM();
@@ -290,7 +345,9 @@ class cNewO_NameManager : public cVirtInterf_NewO_NameManager
            std::string NameHomFloat(const std::string&,const std::string&);
 
            std::string NameListeImOrientedWith(const std::string &,bool Bin) const;
+           std::string RecNameListeImOrientedWith(const std::string &,bool Bin) const;
            std::list<std::string>  ListeImOrientedWith(const std::string & aName) const;
+           std::list<std::string>  Liste2SensImOrientedWith(const std::string & aName) const; // Ajoute Rec
 
            CamStenope * OutPutCamera(const std::string & aName) const;
            CamStenope * CalibrationCamera(const std::string  & aName) const;
@@ -303,6 +360,16 @@ class cNewO_NameManager : public cVirtInterf_NewO_NameManager
            std::string NameListeCpleConnected(bool Bin) const;
            std::string NameRatafiaSom(const std::string & aName,bool Bin) const;
 
+           // Orientation d'un triplets a partir d'un Ori existante, convention Martini
+           std::pair<ElRotation3D,ElRotation3D> OriRelTripletFromExisting
+                                                (
+                                                    const std::string & Ori,
+                                                    const std::string & aNameI1,
+                                                    const std::string & aNameI2,
+                                                    const std::string & aNameI3,
+                                                    bool & Ok
+                                                );
+
            void LoadHomFloats(std::string,std::string,std::vector<Pt2df> * aVP1,std::vector<Pt2df> * aVP2,bool SVP=false);
            void LoadHomFloats(cNewO_OneIm * ,cNewO_OneIm *,std::vector<Pt2df> * aVP1,std::vector<Pt2df> * aVP2);
            void GenLoadHomFloats(const std::string &  aNameH,std::vector<Pt2df> * aVP1,std::vector<Pt2df> * aVP2,bool SVP);
@@ -312,6 +379,7 @@ class cNewO_NameManager : public cVirtInterf_NewO_NameManager
 
            std::string NameOriInitTriplet(bool ModeBin,cNewO_OneIm *,cNewO_OneIm *,cNewO_OneIm *,bool WithMakeDir=false);
            std::string NameOriOptimTriplet(bool ModeBin,cNewO_OneIm *,cNewO_OneIm *,cNewO_OneIm *,bool WithMakeDir=false);
+           std::string NameOriOptimTriplet(bool ModeBin,const std::string&,const std::string&,const std::string&,bool WithMakeDir=false);
 
            std::string NameOriGenTriplet(bool Quick,bool ModeBin,cNewO_OneIm *,cNewO_OneIm *,cNewO_OneIm *);
 
@@ -413,16 +481,9 @@ class cExeParalByPaquets
           int                    mNbInOnePaquet;
 };
 
+CamStenope * DefaultCamera(const std::string & aName);
 
-void RazEllips(cXml_Elips3D &);
-void AddEllips(cXml_Elips3D &,const Pt3dr & aP,double aPds);
-void NormEllips(cXml_Elips3D &);
-
-
-
-
-
-
+void TestEllips_3D();
 
 
 #endif // _ELISE_NEW_ORI_H

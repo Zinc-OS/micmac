@@ -106,8 +106,8 @@ void Apero2PMVS(string aFullPattern, string aOri)
     int nbIm = (int)ListIm.size();
     cout<<"Images to process: "<<nbIm<<endl;
 
-    string cmdDRUNK,cmdConv;
-    list<string> ListDrunk,ListConvert;
+    string cmdDRUNK,cmdConv,cmdDel;
+    list<string> ListDrunk,ListConvert,ListDel;
 
     cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc(aNameDir);
     //Computing PMVS orientations and writing lists of DRUNK and Convert commands
@@ -119,19 +119,22 @@ void Apero2PMVS(string aFullPattern, string aOri)
         ListIm.pop_front();
 
         //Creating the numerical format for the output files names
-        char nb[9];
+        char nb[12];
         sprintf(nb, "%08d", i);
 
         //Creating the lists of DRUNK and Convert commands
         cmdDRUNK=MMDir() + "bin/Drunk " + aNameDir + aFullName + " " + aOri + " Out=" + "pmvs-" + aOri + "/visualize/ Talk=0";
         ListDrunk.push_back(cmdDRUNK);
         #if (ELISE_unix || ELISE_Cygwin || ELISE_MacOs)
-            cmdConv="convert ephemeral:" + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif " + aNameDir + "pmvs-"+ aOri +"/visualize/"+(string)nb + ".jpg";
+            cmdConv="convert " + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif " + aNameDir + "pmvs-"+ aOri +"/visualize/"+(string)nb + ".jpg";
+			cmdDel = "rm " + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif ";
         #endif
         #if (ELISE_windows)
-            cmdConv=MMDir() + "binaire-aux/convert ephemeral:" + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif " + aNameDir + "pmvs-"+ aOri +"/visualize/"+(string)nb + ".jpg";
+            cmdConv=MMDir() + "binaire-aux/windows/convert.exe " + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif " + aNameDir + "pmvs-"+ aOri +"/visualize/"+(string)nb + ".jpg";
+			cmdDel = "del " + aNameDir + "pmvs-" + aOri + "/visualize/" + aFullName + ".tif ";
         #endif
-        ListConvert.push_back(cmdConv);
+		ListConvert.push_back(cmdConv);
+		ListDel.push_back(cmdDel);
 
         //Formating the camera name
         string aNameCam="Ori-"+aOri+"/Orientation-"+aFullName+".xml";
@@ -161,9 +164,13 @@ void Apero2PMVS(string aFullPattern, string aOri)
     cout<<"Undistorting the images with Drunk"<<endl;
     cEl_GPAO::DoComInParal(ListDrunk,aNameDir + "MkDrunk");
 
-    //Converting into .jpg (pmvs can't use .tif) with Convert
-    cout<<"Converting into .jpg"<<endl;
-    cEl_GPAO::DoComInParal(ListConvert,aNameDir + "MkConvert");
+	//Converting into .jpg (pmvs can't use .tif) with Convert
+	cout << "Converting into .jpg" << endl;
+	cEl_GPAO::DoComInParal(ListConvert, aNameDir + "MkConvert");
+
+	//Removing .tif
+	cout << "Removing .tif" << endl;
+	cEl_GPAO::DoComInParal(ListDel, aNameDir + "MkDel");
 
     // Write the options file with basic parameters
     cout<<"Writing the option file"<<endl;
@@ -215,38 +222,35 @@ int Apero2PMVS_main(int argc,char ** argv)
 }
 
 
+/* Footer-MicMac-eLiSe-25/06/2007
 
+   Ce logiciel est un programme informatique servant a  la mise en
+   correspondances d'images pour la reconstruction du relief.
 
+   Ce logiciel est regi par la licence CeCILL-B soumise au droit francais et
+   respectant les principes de diffusion des logiciels libres. Vous pouvez
+   utiliser, modifier et/ou redistribuer ce programme sous les conditions
+   de la licence CeCILL-B telle que diffusee par le CEA, le CNRS et l'INRIA
+   sur le site "http://www.cecill.info".
 
-/*Footer-MicMac-eLiSe-25/06/2007
+   En contrepartie de l'accessibilite au code source et des droits de copie,
+   de modification et de redistribution accordes par cette licence, il n'est
+   offert aux utilisateurs qu'une garantie limitee.  Pour les memes raisons,
+   seule une responsabilite restreinte pese sur l'auteur du programme,  le
+   titulaire des droits patrimoniaux et les concedants successifs.
 
-Ce logiciel est un programme informatique servant �  la mise en
-correspondances d'images pour la reconstruction du relief.
+   A cet egard  l'attention de l'utilisateur est attiree sur les risques
+   associes au chargement, a l'utilisation, a la modification et/ou au
+   developpement et a la reproduction du logiciel par l'utilisateur etant
+   donne sa specificite de logiciel libre, qui peut le rendre complexe a
+   manipuler et qui le reserve donc a des developpeurs et des professionnels
+   avertis possedant  des  connaissances  informatiques approfondies.  Les
+   utilisateurs sont donc invites a charger  et  tester  l'adequation  du
+   logiciel a leurs besoins dans des conditions permettant d'assurer la
+   securite de leurs systemes et ou de leurs donnees et, plus generalement,
+   a l'utiliser et l'exploiter dans les memes conditions de securite.
 
-Ce logiciel est régi par la licence CeCILL-B soumise au droit français et
-respectant les principes de diffusion des logiciels libres. Vous pouvez
-utiliser, modifier et/ou redistribuer ce programme sous les conditions
-de la licence CeCILL-B telle que diffusée par le CEA, le CNRS et l'INRIA
-sur le site "http://www.cecill.info".
-
-En contrepartie de l'accessibilité au code source et des droits de copie,
-de modification et de redistribution accordés par cette licence, il n'est
-offert aux utilisateurs qu'une garantie limitée.  Pour les mêmes raisons,
-seule une responsabilité restreinte pèse sur l'auteur du programme,  le
-titulaire des droits patrimoniaux et les concédants successifs.
-
-A cet égard  l'attention de l'utilisateur est attirée sur les risques
-associés au chargement,  �  l'utilisation,  �  la modification et/ou au
-développement et �  la reproduction du logiciel par l'utilisateur étant
-donné sa spécificité de logiciel libre, qui peut le rendre complexe �
-manipuler et qui le réserve donc �  des développeurs et des professionnels
-avertis possédant  des  connaissances  informatiques approfondies.  Les
-utilisateurs sont donc invités �  charger  et  tester  l'adéquation  du
-logiciel �  leurs besoins dans des conditions permettant d'assurer la
-sécurité de leurs systèmes et ou de leurs données et, plus généralement,
-�  l'utiliser et l'exploiter dans les mêmes conditions de sécurité.
-
-Le fait que vous puissiez accéder �  cet en-tête signifie que vous avez
-pris connaissance de la licence CeCILL-B, et que vous en avez accepté les
-termes.
-Footer-MicMac-eLiSe-25/06/2007*/
+   Le fait que vous puissiez acceder a cet en-tete signifie que vous avez
+   pris connaissance de la licence CeCILL-B, et que vous en avez accepte les
+   termes.
+   Footer-MicMac-eLiSe-25/06/2007/*/

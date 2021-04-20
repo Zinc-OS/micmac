@@ -303,6 +303,85 @@ int TestDistM2C_main(int argc,char ** argv)
 }
 
 
+
+int TestDistortion_main(int argc,char ** argv)
+{
+    std::string aNameCalib;
+    Pt2dr aPt2d;
+    Pt3dr aPt3d;
+    REAL prof=1;
+    bool showAngles=false;
+
+    ElInitArgMain
+    (
+        argc,argv,
+        LArgMain()  <<  EAMC(aNameCalib,"Calibration Name"),
+        LArgMain()  <<  EAM(aPt2d, "p2d", true, "Point in picture coordinates")
+                    <<  EAM(aPt3d, "p3d", true, "Point in world coordinates")
+                    <<  EAM(prof, "prof", true, "prof for p2d (default=1)")
+                    <<  EAM(showAngles, "showAngles", true, "show angles in/out (default=false)")
+    );
+
+    cElemAppliSetFile anEASF(aNameCalib);
+    std::cout << aNameCalib << std::endl;
+
+    CamStenope * aCam =  CamOrientGenFromFile(aNameCalib,anEASF.mICNM);
+
+    std::cout << "//   R3 : \"reel\" coordonnee initiale\n";
+    std::cout << "//   L3 : \"Locale\", apres rotation\n";
+    std::cout << "//   C2 :  camera, avant distortion\n";
+    std::cout << "//   F2 : finale apres Distortion\n";
+    std::cout << "//   M2 : coordonnees scannees \n";
+    std::cout << "//\n";
+    std::cout << "//       Orientation      Projection      Distortion      Interne mm\n";
+    std::cout << "//   R3 -------------> L3------------>C2------------->F2------------>M2\n";
+    std::cout << "//\n";
+
+    std::cout << "Focale " << aCam->Focale() << "\n";
+
+    if (EAMIsInit(&aPt2d))
+    {
+        std::cout << "M2 " << aPt2d << " ---> F2 " << aCam->NormM2C(aPt2d)  << " --->C2 " <<
+                     aCam->F2toC2(aCam->NormM2C(aPt2d)) << " ---> R3 "<< aCam->ImEtProf2Terrain(aCam->NormM2C(aPt2d),prof) << "\n";
+    }
+
+    if (EAMIsInit(&aPt3d))
+    {
+        std::cout << "prof: "<< aCam->ProfondeurDeChamps(aPt3d) << "\n";
+        std::cout << "R3 "<< aPt3d;
+        std::cout << " ---> C2 "<< aCam->DistInverse(aCam->NormC2M(aCam->Ter2Capteur(aPt3d)));
+        std::cout << " ---> F2 "<< aCam->Ter2Capteur(aPt3d);
+        std::cout << " ---> M2 "<< aCam->NormC2M(aCam->Ter2Capteur(aPt3d)) << "\n";
+    }
+
+    /*std::cout << "NormM2C "<< aCam->NormM2C(aP0) <<"\n";
+    Pt3dr aPtTer(0.976092906909062696, -0.797308401978953252, -8.10257300823790594);
+    std::cout << "Ter2Capteur "<< aCam->Ter2Capteur(aPtTer) << " " << aCam->NormC2M(aCam->Ter2Capteur(aPtTer)) << "\n";*/
+
+    if (showAngles)
+    {
+        //table of input angles VS ouput angles
+        std::cout<<"\ninAngle outAngle outX/f\n";
+        double inAngle,outAngle;
+        Pt3dr inPt3d;
+        Pt2dr outPt2d;
+        for (int i=-90;i<=90;i++)
+        {
+            inAngle=i*PI/180;
+            inPt3d=Pt3dr(sin(inAngle),0,cos(inAngle));
+            outPt2d=aCam->L3toF2(inPt3d);
+            if ((outPt2d.x>0)&&(outPt2d.x<aCam->Sz().x))
+            {
+                outAngle=atan((outPt2d.x-aCam->PP().x)/aCam->Focale());
+                std::cout<<inAngle<<" "<<outAngle<<" "<<(outPt2d.x-aCam->PP().x)/aCam->Focale()<<"\n";
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
 class cStrPtCamForInter
 {
     public :
@@ -453,36 +532,35 @@ int CPP_RedressIm_Main()
 */
 
 
+/* Footer-MicMac-eLiSe-25/06/2007
 
-/*Footer-MicMac-eLiSe-25/06/2007
-
-Ce logiciel est un programme informatique servant �  la mise en
+Ce logiciel est un programme informatique servant a la mise en
 correspondances d'images pour la reconstruction du relief.
 
-Ce logiciel est régi par la licence CeCILL-B soumise au droit français et
+Ce logiciel est regi par la licence CeCILL-B soumise au droit francais et
 respectant les principes de diffusion des logiciels libres. Vous pouvez
 utiliser, modifier et/ou redistribuer ce programme sous les conditions
-de la licence CeCILL-B telle que diffusée par le CEA, le CNRS et l'INRIA
+de la licence CeCILL-B telle que diffusee par le CEA, le CNRS et l'INRIA
 sur le site "http://www.cecill.info".
 
-En contrepartie de l'accessibilité au code source et des droits de copie,
-de modification et de redistribution accordés par cette licence, il n'est
-offert aux utilisateurs qu'une garantie limitée.  Pour les mêmes raisons,
-seule une responsabilité restreinte pèse sur l'auteur du programme,  le
-titulaire des droits patrimoniaux et les concédants successifs.
+En contrepartie de l'accessibilite au code source et des droits de copie,
+de modification et de redistribution accordes par cette licence, il n'est
+offert aux utilisateurs qu'une garantie limitee.  Pour les memes raisons,
+seule une responsabilite restreinte pese sur l'auteur du programme,  le
+titulaire des droits patrimoniaux et les concedants successifs.
 
-A cet égard  l'attention de l'utilisateur est attirée sur les risques
-associés au chargement,  �  l'utilisation,  �  la modification et/ou au
-développement et �  la reproduction du logiciel par l'utilisateur étant
-donné sa spécificité de logiciel libre, qui peut le rendre complexe �
-manipuler et qui le réserve donc �  des développeurs et des professionnels
-avertis possédant  des  connaissances  informatiques approfondies.  Les
-utilisateurs sont donc invités �  charger  et  tester  l'adéquation  du
-logiciel �  leurs besoins dans des conditions permettant d'assurer la
-sécurité de leurs systèmes et ou de leurs données et, plus généralement,
-�  l'utiliser et l'exploiter dans les mêmes conditions de sécurité.
+A cet egard  l'attention de l'utilisateur est attiree sur les risques
+associes au chargement,  a l'utilisation,  a la modification et/ou au
+developpement et a la reproduction du logiciel par l'utilisateur etant
+donne sa specificite de logiciel libre, qui peut le rendre complexe a
+manipuler et qui le reserve donc a des developpeurs et des professionnels
+avertis possedant  des  connaissances  informatiques approfondies.  Les
+utilisateurs sont donc invites a charger  et  tester  l'adequation  du
+logiciel a leurs besoins dans des conditions permettant d'assurer la
+securite de leurs systemes et ou de leurs donnees et, plus generalement,
+a l'utiliser et l'exploiter dans les memes conditions de securite.
 
-Le fait que vous puissiez accéder �  cet en-tête signifie que vous avez
-pris connaissance de la licence CeCILL-B, et que vous en avez accepté les
+Le fait que vous puissiez acceder a cet en-tete signifie que vous avez
+pris connaissance de la licence CeCILL-B, et que vous en avez accepte les
 termes.
-Footer-MicMac-eLiSe-25/06/2007*/
+Footer-MicMac-eLiSe-25/06/2007/*/

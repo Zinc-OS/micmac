@@ -62,32 +62,39 @@ void cAppli_NewSolGolInit::ResetFlagCC()
 void cAppli_NewSolGolInit::NumeroteCC()
 {
     int aNumCC = 0;
+    // Parse all triplet
     for (int  aK3=0 ; aK3<int (mV3.size()) ; aK3++)
     {
         cNOSolIn_Triplet * aTri0 = mV3[aK3];
 
+        // If the triplet has not been marked, it's a new component
         if ( !aTri0->Flag().kth(mFlag3CC))
         {
             // std::vector<cNOSolIn_Triplet*> * aCC = new std::vector<cNOSolIn_Triplet*>;
+            // Create a new component
             cNO_CC_TripSom * aNewCC3S = new cNO_CC_TripSom;
-            aNewCC3S->mNumCC = aNumCC;
-            mVCC.push_back(aNewCC3S);
-            std::vector<cNOSolIn_Triplet*> * aCC3 = &(aNewCC3S->mTri);
-            std::vector<tSomNSI *> * aCCS = &(aNewCC3S->mSoms);
+            aNewCC3S->mNumCC = aNumCC;  // give it a number
+            mVCC.push_back(aNewCC3S);   // add it to the vector of component
+            std::vector<cNOSolIn_Triplet*> * aCC3 = &(aNewCC3S->mTri); // Quick acces to vec of tri in the CC
+            std::vector<tSomNSI *> * aCCS = &(aNewCC3S->mSoms); // Quick accessto som
 
             // Calcul des triplets 
-            aCC3->push_back(aTri0);
-            aTri0->Flag().set_kth_true(mFlag3CC);
-            aTri0->NumCC() = aNumCC;
+            aCC3->push_back(aTri0);  // Add triplet T0
+            aTri0->Flag().set_kth_true(mFlag3CC);// Mark it as explored
+            aTri0->NumCC() = aNumCC;  // Put  right num to T0
             int aKCur = 0;
-            while (aKCur!=int(aCC3->size()))
+            // Traditional loop of CC : while  no new inexplored neighboor
+            while (aKCur!=int(aCC3->size())) 
             {
                cNOSolIn_Triplet * aTri1 = (*aCC3)[aKCur];
+               // For each edge of the current triplet
                for (int aKA=0 ; aKA<3 ; aKA++)
                {
+                  // Get triplet adjacent to this edge and parse them
                   std::vector<cLinkTripl> &  aLnk = aTri1->KArc(aKA)->attr().ASym()->Lnk3();
                   for (int aKL=0 ; aKL<int(aLnk.size()) ; aKL++)
                   {
+                     // If not marked, mark it and push it in aCC3, return it was added
                      if (SetFlagAdd(*aCC3,aLnk[aKL].m3,mFlag3CC))
                      {
                           aLnk[aKL].m3->NumCC() = aNumCC;
@@ -97,7 +104,7 @@ void cAppli_NewSolGolInit::NumeroteCC()
                aKCur++;
             }
 
-            // Calcul des sommets 
+            // Compute the summit of the CC, it's easy, just be carrful to get them only once
             int aFlagSom = mGr.alloc_flag_som();
             for (int aKT=0 ; aKT<int(aCC3->size()) ; aKT++)
             {
@@ -203,7 +210,7 @@ double cAppli_NewSolGolInit::ReMoyOneTriplet(cNOSolIn_Triplet * aTri)
      std::vector<Pt3dr> aVCTri;
      std::vector<Pt3dr> aVCCur;
 
-     
+     ///calcul de la rotation du passage (local->global)
      for (int aKS=0 ; aKS<3 ; aKS++)
      {
          tSomNSI * aSom =  aTri->KSom(aKS);
@@ -221,18 +228,19 @@ double cAppli_NewSolGolInit::ReMoyOneTriplet(cNOSolIn_Triplet * aTri)
      double aSomDCur=0;
      double aSomDTri=0;
 
-
+     ///som de translations entre des images voisin dans repere local (aSomDTri) et globale (aSomDCur) 
      for (int aKS=0 ; aKS<3 ; aKS++)
      {
           aSomDCur += euclid(aVCCur[aKS]-aVCCur[(aKS+1)%3]);
           aSomDTri += euclid(aVCTri[aKS]-aVCTri[(aKS+1)%3]);
      }
+     ///facteur d'echelle entre le modele local et global
      double aLambda = aSomDCur / aSomDTri;
 
 
 
 
-     //  aOffsTr + aMTri2Cur * PTri * aLambda = PCur
+     ///calcul de la translation => aOffsTr + aMTri2Cur * PTri * aLambda = PCur
      Pt3dr aOffsTr(0,0,0);
      for (int aKS=0 ; aKS<3 ; aKS++)
      {
@@ -272,8 +280,17 @@ double cAppli_NewSolGolInit::ReMoyOneTriplet(cNOSolIn_Triplet * aTri)
              Pt3dr  aTrK = aOffsTr + aMTri2Cur*aVCTri[aKS] * aLambda;
              ElMatrix<double> aMK = aMTri2Cur * aTri->RotOfSom(aSom).Mat();
 
+             if (aSom->attr().CamInOri())
+             {
+                 const ElRotation3D &   aRCur =  aSom->attr().CurRot();
+
+                 aTrK = aRCur.tr();
+                 aMK = aRCur.Mat();
+             }
+
             // ElMatrix<double> aMKTri2Cur = aRCur.Mat() * aRTri.Mat().transpose();
 
+             //repartitin d'erreur; les valuers global change ici
              aSom->attr().SomPdsReMoy() += aPds;
              aSom->attr().SomTrReMoy () = aSom->attr().SomTrReMoy () + aTrK * aPds;
              aSom->attr().SomMatReMoy() = aSom->attr().SomMatReMoy() + aMK * aPds;
@@ -323,13 +340,14 @@ void cAppli_NewSolGolInit::ReMoyByTriplet()
     StatTrans(aTr0,aDist0);
 
     mLastEcartReMoy.clear();
+    // For all oriented som reset the stat that will accumulate the different rotation
     for (int aKS=0 ; aKS <  int(mVSOrCur.size()) ; aKS++)
     {
         tSomNSI * aSom = mVSOrCur[aKS];
-        aSom->attr().SomPdsReMoy() = 0;
-        aSom->attr().SomTrReMoy () = Pt3dr(0,0,0);
-        aSom->attr().SomPMedReM () = Pt3dr(0,0,0);
-        aSom->attr().SomMatReMoy() = ElMatrix<double>(3,3,0.0);
+        aSom->attr().SomPdsReMoy() = 0;              // Weigthing
+        aSom->attr().SomTrReMoy () = Pt3dr(0,0,0);   // Translation
+        aSom->attr().SomPMedReM () = Pt3dr(0,0,0);   // P3D Med ?
+        aSom->attr().SomMatReMoy() = ElMatrix<double>(3,3,0.0);  // Rotation
     }
 
     for (int aK3=0 ; aK3<int(mV3Use4Ori.size()) ; aK3++)
@@ -611,29 +629,45 @@ tSomNSI * cAppli_NewSolGolInit::GetBestSom()
     return 0;
 }
 
-// Hameau-de-valouse.com
 
 
 void cAppli_NewSolGolInit::CalculOrient(cNOSolIn_Triplet * aGerm)
 {
+    // Alloc a certain number of flag to mark submit
     mFlagSOrCur = mGr.alloc_flag_som();
     mFlagSOrCdt = mGr.alloc_flag_som();
     mFlagSOrGerm = mGr.alloc_flag_som();
-    mFlag3UsedForOri = mAllocFlag3.flag_alloc();
-
-    
+    mFlag3UsedForOri = mAllocFlag3.flag_alloc(); // Flag for triplet
 
 
-    SetFlagAdd(mV3Use4Ori,aGerm,mFlag3UsedForOri);
+    SetFlagAdd(mV3Use4Ori,aGerm,mFlag3UsedForOri); // Add seed and mark it
 
-    for (int aKS=0 ; aKS<3 ; aKS++)
+    if (mHasInOri)  // Dont comment for now the branch with InOri
     {
-         SetFlagAdd(mVSOrGerm,aGerm->KSom(aKS),mFlagSOrGerm);
+         for (tItSNSI anItS=mGr.begin(mSubAll) ; anItS.go_on(); anItS++)
+         // for (int aKS=0 ; aKS<3 ; aKS++)
+         {
+              tSomNSI & aSom = *anItS;
+              // tSomNSI &  aSom = *(aGerm->KSom(aKS));
+              CamStenope *   aCam = aSom.attr().CamInOri();
+              if (aCam)
+              {
+                  AddSOrCur(&aSom,aCam->Orient().inv());
+                  // AddSOrCur(&aSom,aCam->Orient().inv());
+                  SetFlagAdd(mVSOrGerm,&aSom,mFlagSOrGerm);
+                  // aV1.push_back(aGerm->RotOfK(aKS).tr());
+                  // aV2.push_back(aCam->Orient().inv().tr());
+              }
+         }
     }
-
-    for (int aKS=0 ; aKS<3 ; aKS++)
+    else
     {
-         AddSOrCur(aGerm->KSom(aKS),aGerm->RotOfK(aKS));
+        // Put the 3 sommit in the heap
+        for (int aKS=0 ; aKS<3 ; aKS++)
+        {
+             AddSOrCur(aGerm->KSom(aKS),aGerm->RotOfK(aKS));
+             SetFlagAdd(mVSOrGerm,aGerm->KSom(aKS),mFlagSOrGerm);
+        }
     }
 
     tSomNSI * aSom;
@@ -691,12 +725,16 @@ void  cAppli_NewSolGolInit::CalculOrient(cNO_CC_TripSom * aCC)
      for (int aK=0 ; aK< int(aCC->mTri.size()) ; aK++)
      {
          cNOSolIn_Triplet * aTri = aCC->mTri[aK];
-         if (aTri->CostArc()<aBesCoherCost)
+         if ((!mHasInOri) || (aTri->TripletIsInOri()))
          {
-             aBesCoherCost = aTri->CostArc();
-             aGerm0 = aTri;
+             if (aTri->CostArc()<aBesCoherCost)
+             {
+                 aBesCoherCost = aTri->CostArc();
+                 aGerm0 = aTri;
+             }
          }
      }
+     ELISE_ASSERT(aGerm0!=0,"Cannot compute germ in CalculOrient (due to InOri ?)");
 
      CalculOrient(aGerm0);
 }

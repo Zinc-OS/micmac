@@ -483,7 +483,6 @@ Fonc_Num Abs (Fonc_Num f)
 
 
 
-
 static Fonc_Num DSquare(Fonc_Num f,INT k)
 {
     return 2* f.deriv(k) * f;
@@ -588,9 +587,6 @@ Fonc_Num Pow7 (Fonc_Num f)
      return new Op_Un_Mixte_Not_Comp
                (f,tab_pow7,tab_pow7,"VPow7",VPow7,DPow7,VDPow7,Pow7DegreOpun);
 }
-
-
-
 
 
 
@@ -766,6 +762,8 @@ Fonc_Num tan  (Fonc_Num f)
      return Op_Un_Math::New(f,tab_tan,"tan",CppTan,Dtan,VDTan);
 }
 
+
+
          // ==========  f4S2AtRxS2 ======
 void tab_f4S2AtRxS2(REAL * out, const REAL * in,INT nb)
 {
@@ -840,6 +838,7 @@ Fonc_Num f2SAtRxS2SRx  (Fonc_Num f)
             );
 }
 
+
           // ==========  Der-AtRxSRx ===============
 
 void tab_Der2SAtRxS2SRx(REAL * out, const REAL * in,INT nb)
@@ -859,6 +858,142 @@ Fonc_Num Der2SAtRxS2SRx  (Fonc_Num f)
                 NoValDeriv
             );
 }
+
+/**********************************************************/
+/*                                                        */
+/*           ModeleStereographique                        */
+/*                                                        */
+/**********************************************************/
+
+double PrecStereographique(double x);
+double Der_PrecStereographique(double x);
+
+double SqM2CRx_StereoG(double x);
+double Der_SqM2CRx_StereoG(double x);
+
+// double Inv_PrecStereographique(double x);
+
+Fonc_Num Der_PrecStereographique(Fonc_Num f);
+Fonc_Num Der_SqM2CRx_StereoG(Fonc_Num f);
+
+         // ==========  PrecStereographique ======
+
+void tab_PrecStereographique(REAL * out, const REAL * in,INT nb)
+{
+   ELISE_ASSERT(false,"tab_PrecStereographique");
+/*
+   for (INT i=0 ; i<nb ; i++)
+         out[i] = PrecStereographique(in[i]);
+*/
+}
+static Fonc_Num DPrecStereographique(Fonc_Num f,INT k)
+{
+    return f.deriv(k) * Der_PrecStereographique(f);
+}
+/*
+static double VPrecStereographique(Fonc_Num f,const PtsKD & aPts,INT aK)
+{
+   return   f.ValDeriv(aPts,aK) *  Der_PrecStereographique(f.ValFonc(aPts));
+}
+*/
+
+Fonc_Num PrecStereographique  (Fonc_Num f)
+{
+     return Op_Un_Math::New
+            (
+                f,
+                tab_PrecStereographique,
+                "PrecStereographique",
+                PrecStereographique,
+                DPrecStereographique,
+                NoValDeriv
+            );
+}
+
+
+//=====================  Der_PrecStereographique =======
+
+void tab_Der_PrecStereographique(REAL * out, const REAL * in,INT nb)
+{
+   ELISE_ASSERT(false,"tab_Der_PrecStereographique");
+/*
+   for (INT i=0 ; i<nb ; i++)
+         out[i] = Der_PrecStereographique(in[i]);
+*/
+}
+Fonc_Num Der_PrecStereographique(Fonc_Num f)
+{
+     return Op_Un_Math::New
+            (
+                f,
+                tab_Der_PrecStereographique,
+                "Der_PrecStereographique",
+                Der_PrecStereographique,
+                NoDeriv,
+                NoValDeriv
+            );
+}
+         // ==========  SqM2CRx_StereoG ======
+
+void tab_SqM2CRx_StereoG(REAL * out, const REAL * in,INT nb)
+{
+   ELISE_ASSERT(false,"tab_SqM2CRx_StereoG");
+/*
+   for (INT i=0 ; i<nb ; i++)
+         out[i] = SqM2CRx_StereoG(in[i]);
+*/
+}
+static Fonc_Num DSqM2CRx_StereoG(Fonc_Num f,INT k)
+{
+    return f.deriv(k) * Der_SqM2CRx_StereoG(f);
+}
+/*
+static double VSqM2CRx_StereoG(Fonc_Num f,const PtsKD & aPts,INT aK)
+{
+   return   f.ValDeriv(aPts,aK) *  Der_SqM2CRx_StereoG(f.ValFonc(aPts));
+}
+*/
+
+Fonc_Num SqM2CRx_StereoG  (Fonc_Num f)
+{
+     return Op_Un_Math::New
+            (
+                f,
+                tab_SqM2CRx_StereoG,
+                "SqM2CRx_StereoG",
+                SqM2CRx_StereoG,
+                DSqM2CRx_StereoG,
+                NoValDeriv
+            );
+}
+
+//=====================  Der_SqM2CRx_StereoG =======
+
+void tab_Der_SqM2CRx_StereoG(REAL * out, const REAL * in,INT nb)
+{
+   ELISE_ASSERT(false,"tab_Der_SqM2CRx_StereoG");
+/*
+   for (INT i=0 ; i<nb ; i++)
+         out[i] = Der_SqM2CRx_StereoG(in[i]);
+*/
+}
+Fonc_Num Der_SqM2CRx_StereoG(Fonc_Num f)
+{
+     return Op_Un_Math::New
+            (
+                f,
+                tab_Der_SqM2CRx_StereoG,
+                "Der_SqM2CRx_StereoG",
+                Der_SqM2CRx_StereoG,
+                NoDeriv,
+                NoValDeriv
+            );
+}
+
+
+// double Der_SqM2CRx_StereoG(double x);
+
+
 
           // ==========  SinCardRx ===============
 void  tab_SinCardRx(REAL * out, const REAL * in,INT nb)
@@ -887,6 +1022,7 @@ Fonc_Num CosRx  (Fonc_Num f)
 {
      return Op_Un_Math::New(f,tab_CosRx,"CosRx",CosRx,DerivCosRx,VDerivCosRx);
 }
+
 
 
 
@@ -923,7 +1059,6 @@ Fonc_Num DerAtRxSRx  (Fonc_Num f)
 }
 
 
-
           // ==========  At2Rx ===============
 
 void tab_At2Rx(REAL * out, const REAL * in,INT nb)
@@ -943,6 +1078,7 @@ Fonc_Num At2Rx  (Fonc_Num f)
 {
      return Op_Un_Math::New(f,tab_At2Rx,"At2Rx",At2Rx,DAt2Rx,VDAt2Rx);
 }
+
 
 
 
@@ -980,7 +1116,6 @@ Fonc_Num sqrt  (Fonc_Num f)
 }
 
 
-
            // arc-tangente
 static Fonc_Num Datan(Fonc_Num f,INT k)
 {
@@ -1000,6 +1135,10 @@ Fonc_Num erfcc  (Fonc_Num f)
 {
      return Op_Un_Math::New(f,tab_erfcc,"erfcc",erfcc,NoDeriv,NoValDeriv);
 }
+
+
+
+
 
 Fonc_Num FoncNormalisee_S1S2 (Flux_Pts aFlux,Fonc_Num aFPds,Fonc_Num aF)
 {
@@ -1027,6 +1166,8 @@ Fonc_Num FoncNormalisee_S1S2 (Flux_Pts aFlux,Fonc_Num aF)
 {
    return FoncNormalisee_S1S2(aFlux,1.0,aF);
 }
+
+
 
 static Fonc_Num Dlog(Fonc_Num f,INT k)
 {
@@ -1164,6 +1305,57 @@ Fonc_Num operator ~  (Fonc_Num f)
 {
      return new Op_Un_Integer(f,tab_not_bit_by_bit,"~",VNotBB);
 }
+
+/*
+Fonc_Num Pow7-4  (Fonc_Num f)
+Fonc_Num f4S2AtRxS2  (Fonc_Num f)
+Fonc_Num Der4S2AtRxS2  (Fonc_Num f)
+Fonc_Num f2SAtRxS2SRx  (Fonc_Num f)
+Fonc_Num Der2SAtRxS2SRx  (Fonc_Num f)
+Fonc_Num SinCardRx  (Fonc_Num f)
+Fonc_Num CosRx  (Fonc_Num f)
+Fonc_Num DerAtRxSRx  (Fonc_Num f)
+Fonc_Num DerAt2Rx  (Fonc_Num f)
+Fonc_Num At2Rx  (Fonc_Num f)
+
+
+Fonc_Num Iconv(Fonc_Num f)
+Fonc_Num round_up(Fonc_Num f)
+Fonc_Num round_down(Fonc_Num f)
+Fonc_Num Rconv(Fonc_Num f)
+Fonc_Num round_ni(Fonc_Num f)
+Fonc_Num round_ni_inf(Fonc_Num f)
+Fonc_Num operator -  (Fonc_Num f)
+Fonc_Num erfcc  (Fonc_Num f)
+*/
+
+tOperFuncUnaire  OperFuncUnaireFromName(const std::string & aName)
+{
+   if (aName=="u-") return operator -;
+   if (aName=="~") return operator ~;
+   if (aName=="!") return operator !;
+   if (aName=="signed_frac") return signed_frac; // Partie fractionnaire entre -0.5 et 0.5
+   if (aName=="ecart_frac") return ecart_frac;
+
+   if (aName=="cos")     return cos;
+   if (aName=="sin")     return sin;
+   if (aName=="tan")     return tan;
+   if (aName=="log")     return log;
+   if (aName=="log2")    return log2;
+   if (aName=="exp")     return exp;
+   if (aName=="square")  return Square;
+   if (aName=="cube")    return Cube;
+   if (aName=="abs")     return Abs;
+   if (aName=="atan")    return atan;
+   if (aName=="sqrt")    return sqrt;
+   if (aName=="erfcc")   return erfcc;
+
+   std::cout << "For name =" << aName << "\n";
+   ELISE_ASSERT(false,"Name is not a valid unary operator");
+
+   return 0;
+}
+
 
 
 

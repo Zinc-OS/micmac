@@ -781,7 +781,7 @@ DATA_Tiff_Ifd::DATA_Tiff_Ifd
     else // (aIntBigTif==0)
     {
        
-       std::cout << "BIGTIF suspended momentally \n";
+       // if (MPD_MM()) std::cout << "BIGTIF suspended momentally \n";
       // mUseFileTile = 0;
       // mBigTiff =  aSzNCompr > aMaxSzFile;
     }
@@ -2268,7 +2268,7 @@ L_Arg_Opt_Tiff  ArgOpTiffMDP(const cMetaDataPhoto & aMDP,bool SVP)
 
 L_Arg_Opt_Tiff  ArgOpTiffMDP(const std::string & aNF)
 {
-   return ArgOpTiffMDP(Tiff_Im(aNF.c_str()).MDP());
+   return ArgOpTiffMDP(Tiff_Im(aNF.c_str()).MDP(),true);
 }
 
 

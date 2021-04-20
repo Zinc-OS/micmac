@@ -1,15 +1,17 @@
 #include "ZBufferRaster.h"
 
-cImgZBuffer::cImgZBuffer(cAppliZBufferRaster * anAppli ,const std::string & aNameIm, bool & aNoTif):
+cImgZBuffer::cImgZBuffer(cAppliZBufferRaster * anAppli , const std::string & aNameIm, bool & aNoTif, int aInd):
 
     mAppli    (anAppli),
     mNameIm   (aNameIm),
+    mInd      (aInd),
     mTif      (Tiff_Im::UnivConvStd(mAppli->Dir() + aNameIm)),
     mSzIm     (mTif.sz()),
     mCamGen   (mAppli->ICNM()->StdCamGenerikOfNames(mAppli->Ori(),mNameIm)),
     mImZ      (round_ni(mSzIm.x*mAppli->Reech()), round_ni(mSzIm.y*mAppli->Reech()), tElZBuf(-1.0)),
     mTImZ     (mImZ),
     mImInd    (round_ni(mSzIm.x*mAppli->Reech()), round_ni(mSzIm.y*mAppli->Reech()), tElZBuf(-1.0)),
+    mTImInd   (mImInd),
     mMasqTri  (1,1),
     mTMasqTri (mMasqTri),
     mMasqIm   (1,1),
@@ -67,6 +69,7 @@ void cImgZBuffer::updateZ(tImZBuf & ImZ, Pt2dr & pxl, double & prof_val, double 
 
 void cImgZBuffer::LoadTri(cTri3D aTri3D)
 {
+
     if (mAppli->DistMax() != TT_DISTMAX_NOLIMIT)
     {
         if (aTri3D.dist2Cam(mCamGen) > mAppli->DistMax())
@@ -75,6 +78,21 @@ void cImgZBuffer::LoadTri(cTri3D aTri3D)
         }
     }
     cTri2D aTri = aTri3D.reprj(mCamGen);
+    if (mAppli->Param().mInverseOrder)
+    {
+        aTri.InverseOrder() = true;
+    }
+    if (mAppli->Param().mFarScene)
+    {
+        if (
+               aTri.IsInCam()
+           )
+        {
+            mAppli->AccNbImgVisible()[int(aTri3D.Ind())].x = int(aTri3D.Ind());
+            mAppli->AccNbImgVisible()[int(aTri3D.Ind())].y++;
+            mAppli->vImgVisibleFarScene()[Ind()] = true;
+        }
+    }
     if (mAppli->Reech() != TT_SCALE_1)
     {
         //Reech coordonee dans aTri2D
@@ -83,10 +101,10 @@ void cImgZBuffer::LoadTri(cTri3D aTri3D)
 
     if (
             aTri.IsInCam() &&
-            -aTri.surf() > TT_SEUIL_SURF
+            -aTri.surf() > Appli()->SEUIL_SURF_TRIANGLE()
        )
     {
-        if (mAppli->NInt() > 1)
+        if (mAppli->NInt() > 1 || this->Appli()->Method() == 2 || this->Appli()->Method() == 1)
         {
             //creat masq rectangle local autour triangle
             Pt2dr aPMin = Inf(Inf(aTri.P1(),aTri.P2()),aTri.P3());
@@ -115,30 +133,47 @@ void cImgZBuffer::LoadTri(cTri3D aTri3D)
 
         //grab coordinate all pixel in triangle
         /*===method 1====*/
-        //vector<Pt2dr> aVPtsInTri;
-        //Flux2StdCont(aVPtsInTri , select(mImZ.all_pts(),mMasqTri.in()) );
-
-        /*===method 2====*/
-        /*
-        for (int aKx=0; aKx<mMasqLocalTri.sz().x; aKx++)
+        if (this->Appli()->Method() == 1)
         {
-            for (int aKy=0; aKy<mMasqLocalTri.sz().y; aKy++)
+            vector<Pt2dr> aVPtsInTri;
+            Flux2StdCont(aVPtsInTri , select(mImZ.all_pts(),mMasqTri.in()) );
+            for (int aKPt=0; aKPt<(int)aVPtsInTri.size(); aKPt++)
             {
-                Pt2di aPt(aKx, aKy);
-                if (mMasqLocalTri.GetI(aPt)!=0);
-                {
-                    Pt2di aPtGlob(aPt+mDecal);
-                    if (mImZ.Inside(aPtGlob))
-                        aVPtsInTri.push_back(Pt2dr(aPtGlob));
-                }
+                Pt2dr aPtRas = aVPtsInTri[aKPt];
+                double prof = aTri.profOfPixelInTri(aPtRas, aTri3D, mCamGen, Appli()->Param().mSafe);
+                cImgZBuffer::updateZ(mImZ, aPtRas, prof, aTri3D.Ind());
             }
         }
-        */
+
+        /*===method 2====*/
+//        if (this->Appli()->Method() == 2)
+//        {
+//            for (int aKx=0; aKx<mMasqLocalTri.sz().x; aKx++)
+//            {
+//                for (int aKy=0; aKy<mMasqLocalTri.sz().y; aKy++)
+//                {
+//                    Pt2di aPt(aKx, aKy);
+//                    if (mMasqLocalTri.GetI(aPt)!=0);
+//                    {
+//                        Pt2di aPtGlob(aPt+mDecal);
+//                        if (mImZ.Inside(aPtGlob))
+//                            aVPtsInTri.push_back(Pt2dr(aPtGlob));
+//                    }
+//                }
+//            }
+//            for (int aKPt=0; aKPt<aVPtsInTri.size(); aKPt++)
+//            {
+//                Pt2dr aPtRas = aVPtsInTri[aKPt];
+//                double prof = aTri.profOfPixelInTri(aPtRas, aTri3D, mCamGen);
+//                cImgZBuffer::updateZ(mImZ, aPtRas, prof, aTri3D.Ind());
+//            }
+//        }
 
         /*===method 3====*/
-
-        cElTriangleComp aElTri(aTri.P1(), aTri.P2(), aTri.P3());
         std::vector<cSegEntierHor> aRasTri;
+        if (this->Appli()->Method() == 3)
+        {
+        cElTriangleComp aElTri(aTri.P1(), aTri.P2(), aTri.P3());
         RasterTriangle(aElTri, aRasTri);
         for (uint aKSeg=0; aKSeg<aRasTri.size(); aKSeg++)
         {
@@ -146,10 +181,12 @@ void cImgZBuffer::LoadTri(cTri3D aTri3D)
             for (int aKPt=0; aKPt<aSeg.mNb; aKPt++)
             {
                 Pt2dr aPtRas(aSeg.mP0.x + aKPt, aSeg.mP0.y);
-                double prof = aTri.profOfPixelInTri(aPtRas, aTri3D, mCamGen);
+                double prof = aTri.profOfPixelInTri(aPtRas, aTri3D, mCamGen, Appli()->Param().mSafe);
                 cImgZBuffer::updateZ(mImZ, aPtRas, prof, aTri3D.Ind());
             }
         }
+        }
+
 
         //Display masq Triangle global
         if (mAppli->NInt() > 1)
@@ -176,6 +213,7 @@ void cImgZBuffer::LoadTri(cTri3D aTri3D)
                 mW->clik_in();
             }
         }
+        //===========================//
         mCntTriTraite++;
     }
     mCntTri++;
@@ -206,18 +244,28 @@ void cImgZBuffer::ImportResult(string & fileTriLbl, string & fileZBuf)
     ELISE_ASSERT(ELISE_fp::exist_file(fileTriLbl),"File Img Label not found");
     ELISE_ASSERT(ELISE_fp::exist_file(fileZBuf),"File Img ZBuf not found");
     Tiff_Im aImInd = Tiff_Im::StdConv(fileTriLbl);
-    Tiff_Im aImZBuf = Tiff_Im::StdConv(fileZBuf);
+    //Tiff_Im aImZBuf = Tiff_Im::StdConv(fileZBuf);
     ELISE_COPY(mImInd.all_pts(), aImInd.in(), mImInd.out());
-    ELISE_COPY(mImZ.all_pts(), aImZBuf.in(), mImZ.out());
+    //ELISE_COPY(mImZ.all_pts(), aImZBuf.in(), mImZ.out());
+    if (Appli()->Param().mFarScene)
+    {
+        cout<<"Far scene is computed by existed result in Tmp-ZBuffer"<<endl;
+    }
     Pt2di aP;
     for (aP.x = 0; aP.x < mImInd.sz().x; aP.x++)
     {
         for (aP.y = 0; aP.y < mImInd.sz().y; aP.y++)
         {
-            double aIndTri = mImInd.GetR(aP);
+            //double aIndTri = mImInd.GetR(aP);
+            double aIndTri = mTImInd.get(aP);
             if (aIndTri  != tElZBuf(-1.0))
             {
                mTriValid[int(aIndTri)] = true;
+               if (Appli()->Param().mFarScene)
+               {
+                    Appli()->AccNbImgVisible()[int(aIndTri)].x = int(aIndTri);
+                    Appli()->AccNbImgVisible()[int(aIndTri)].y++;
+               }
             }
         }
     }

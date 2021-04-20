@@ -82,7 +82,8 @@ typedef enum
   eTIGB_MMDGlobe,
   eTIGB_MMIkonos,
   eTIGB_MMASTER,
-  eTIGB_MMSpice,
+  eTIGB_MMScanLineSensor,
+  eTIGB_MMEpip,
   eTIGB_NbVals
 } eTypeImporGenBundle;
 void xml_init(eTypeImporGenBundle & aVal,cElXMLTree * aTree);
@@ -103,6 +104,7 @@ typedef enum
   eModeNO_Std,
   eModeNO_TTK,
   eModeNO_StdNoTTK,
+  eModeNO_OnlyHomogr,
   eModeNO_NbVals
 } eTypeModeNO;
 void xml_init(eTypeModeNO & aVal,cElXMLTree * aTree);
@@ -117,6 +119,32 @@ void  BinaryDumpInFile(ELISE_fp &,const eTypeModeNO &);
 std::string  Mangling( eTypeModeNO *);
 
 void  BinaryUnDumpFromFile(eTypeModeNO &,ELISE_fp &);
+
+typedef enum
+{
+  eTM2_Homot,
+  eTM2_Simil,
+  eTM2_Affine,
+  eTM2_Homogr,
+  eTM2_Cam,
+  eTM2_Compos,
+  eTM2_Polyn,
+  eTM2_HomotPure,
+  eTM2_Trans,
+  eTM2_NbVals
+} eTypeMap2D;
+void xml_init(eTypeMap2D & aVal,cElXMLTree * aTree);
+std::string  eToString(const eTypeMap2D & aVal);
+
+eTypeMap2D  Str2eTypeMap2D(const std::string & aName);
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eTypeMap2D & anObj);
+
+void  BinaryDumpInFile(ELISE_fp &,const eTypeMap2D &);
+
+std::string  Mangling( eTypeMap2D *);
+
+void  BinaryUnDumpFromFile(eTypeMap2D &,ELISE_fp &);
 
 class cIntervLutConvertion
 {
@@ -5506,6 +5534,9 @@ class cImageVariations
 
         cTplValGesInit< int > & DilateBord();
         const cTplValGesInit< int > & DilateBord()const ;
+
+        cTplValGesInit< double > & PdsZAbsolute();
+        const cTplValGesInit< double > & PdsZAbsolute()const ;
     private:
         bool mV4Vois;
         int mDistVois;
@@ -5514,6 +5545,7 @@ class cImageVariations
         cTplValGesInit< double > mPenteRefutInitInPixel;
         cTplValGesInit< bool > mComputeIncid;
         cTplValGesInit< int > mDilateBord;
+        cTplValGesInit< double > mPdsZAbsolute;
 };
 cElXMLTree * ToXMLTree(const cImageVariations &);
 
@@ -5640,6 +5672,9 @@ class cParamFusionNuage
 
         cTplValGesInit< int > & DilateBord();
         const cTplValGesInit< int > & DilateBord()const ;
+
+        cTplValGesInit< double > & PdsZAbsolute();
+        const cTplValGesInit< double > & PdsZAbsolute()const ;
 
         cImageVariations & ImageVariations();
         const cImageVariations & ImageVariations()const ;
@@ -6245,34 +6280,6 @@ std::string  Mangling( cXml_O2IRotPure *);
 /******************************************************/
 /******************************************************/
 /******************************************************/
-class cXml_O2IHom
-{
-    public:
-        cGlobXmlGen mGXml;
-
-        friend void xml_init(cXml_O2IHom & anObj,cElXMLTree * aTree);
-
-
-        cXmlHomogr & Hom();
-        const cXmlHomogr & Hom()const ;
-
-        double & ResiduHom();
-        const double & ResiduHom()const ;
-    private:
-        cXmlHomogr mHom;
-        double mResiduHom;
-};
-cElXMLTree * ToXMLTree(const cXml_O2IHom &);
-
-void  BinaryDumpInFile(ELISE_fp &,const cXml_O2IHom &);
-
-void  BinaryUnDumpFromFile(cXml_O2IHom &,ELISE_fp &);
-
-std::string  Mangling( cXml_O2IHom *);
-
-/******************************************************/
-/******************************************************/
-/******************************************************/
 class cXml_O2ITiming
 {
     public:
@@ -6317,6 +6324,78 @@ void  BinaryDumpInFile(ELISE_fp &,const cXml_O2ITiming &);
 void  BinaryUnDumpFromFile(cXml_O2ITiming &,ELISE_fp &);
 
 std::string  Mangling( cXml_O2ITiming *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Rotation
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Rotation & anObj,cElXMLTree * aTree);
+
+
+        cTypeCodageMatr & Ori();
+        const cTypeCodageMatr & Ori()const ;
+
+        Pt3dr & Centre();
+        const Pt3dr & Centre()const ;
+    private:
+        cTypeCodageMatr mOri;
+        Pt3dr mCentre;
+};
+cElXMLTree * ToXMLTree(const cXml_Rotation &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Rotation &);
+
+void  BinaryUnDumpFromFile(cXml_Rotation &,ELISE_fp &);
+
+std::string  Mangling( cXml_Rotation *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Elips2D
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Elips2D & anObj,cElXMLTree * aTree);
+
+
+        Pt2dr & CDG();
+        const Pt2dr & CDG()const ;
+
+        double & Sxx();
+        const double & Sxx()const ;
+
+        double & Syy();
+        const double & Syy()const ;
+
+        double & Sxy();
+        const double & Sxy()const ;
+
+        double & Pds();
+        const double & Pds()const ;
+
+        bool & Norm();
+        const bool & Norm()const ;
+    private:
+        Pt2dr mCDG;
+        double mSxx;
+        double mSyy;
+        double mSxy;
+        double mPds;
+        bool mNorm;
+};
+cElXMLTree * ToXMLTree(const cXml_Elips2D &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Elips2D &);
+
+void  BinaryUnDumpFromFile(cXml_Elips2D &,ELISE_fp &);
+
+std::string  Mangling( cXml_Elips2D *);
 
 /******************************************************/
 /******************************************************/
@@ -6377,6 +6456,90 @@ std::string  Mangling( cXml_Elips3D *);
 /******************************************************/
 /******************************************************/
 /******************************************************/
+class cXml_MepHom
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_MepHom & anObj,cElXMLTree * aTree);
+
+
+        std::list< cXml_Rotation > & Ori();
+        const std::list< cXml_Rotation > & Ori()const ;
+    private:
+        std::list< cXml_Rotation > mOri;
+};
+cElXMLTree * ToXMLTree(const cXml_MepHom &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_MepHom &);
+
+void  BinaryUnDumpFromFile(cXml_MepHom &,ELISE_fp &);
+
+std::string  Mangling( cXml_MepHom *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_O2IHom
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_O2IHom & anObj,cElXMLTree * aTree);
+
+
+        cXmlHomogr & Hom();
+        const cXmlHomogr & Hom()const ;
+
+        double & ResiduHom();
+        const double & ResiduHom()const ;
+
+        cTplValGesInit< cXml_MepHom > & ForMepHom();
+        const cTplValGesInit< cXml_MepHom > & ForMepHom()const ;
+    private:
+        cXmlHomogr mHom;
+        double mResiduHom;
+        cTplValGesInit< cXml_MepHom > mForMepHom;
+};
+cElXMLTree * ToXMLTree(const cXml_O2IHom &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_O2IHom &);
+
+void  BinaryUnDumpFromFile(cXml_O2IHom &,ELISE_fp &);
+
+std::string  Mangling( cXml_O2IHom *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_OriCple
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_OriCple & anObj,cElXMLTree * aTree);
+
+
+        cXml_Rotation & Ori1();
+        const cXml_Rotation & Ori1()const ;
+
+        cXml_Rotation & Ori2();
+        const cXml_Rotation & Ori2()const ;
+    private:
+        cXml_Rotation mOri1;
+        cXml_Rotation mOri2;
+};
+cElXMLTree * ToXMLTree(const cXml_OriCple &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_OriCple &);
+
+void  BinaryUnDumpFromFile(cXml_OriCple &,ELISE_fp &);
+
+std::string  Mangling( cXml_OriCple *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
 class cXml_O2IComputed
 {
     public:
@@ -6405,6 +6568,12 @@ class cXml_O2IComputed
 
         cXml_Elips3D & Elips();
         const cXml_Elips3D & Elips()const ;
+
+        cTplValGesInit< cXml_Elips2D > & Elips2();
+        const cTplValGesInit< cXml_Elips2D > & Elips2()const ;
+
+        cTplValGesInit< cXml_OriCple > & OriCpleGps();
+        const cTplValGesInit< cXml_OriCple > & OriCpleGps()const ;
     private:
         cXml_O2ITiming mTiming;
         cXml_O2IRotation mOrientAff;
@@ -6413,6 +6582,8 @@ class cXml_O2IComputed
         double mBSurH;
         double mRecHom;
         cXml_Elips3D mElips;
+        cTplValGesInit< cXml_Elips2D > mElips2;
+        cTplValGesInit< cXml_OriCple > mOriCpleGps;
 };
 cElXMLTree * ToXMLTree(const cXml_O2IComputed &);
 
@@ -6481,34 +6652,6 @@ void  BinaryDumpInFile(ELISE_fp &,const cXml_Ori2Im &);
 void  BinaryUnDumpFromFile(cXml_Ori2Im &,ELISE_fp &);
 
 std::string  Mangling( cXml_Ori2Im *);
-
-/******************************************************/
-/******************************************************/
-/******************************************************/
-class cXml_Rotation
-{
-    public:
-        cGlobXmlGen mGXml;
-
-        friend void xml_init(cXml_Rotation & anObj,cElXMLTree * aTree);
-
-
-        cTypeCodageMatr & Ori();
-        const cTypeCodageMatr & Ori()const ;
-
-        Pt3dr & Centre();
-        const Pt3dr & Centre()const ;
-    private:
-        cTypeCodageMatr mOri;
-        Pt3dr mCentre;
-};
-cElXMLTree * ToXMLTree(const cXml_Rotation &);
-
-void  BinaryDumpInFile(ELISE_fp &,const cXml_Rotation &);
-
-void  BinaryUnDumpFromFile(cXml_Rotation &,ELISE_fp &);
-
-std::string  Mangling( cXml_Rotation *);
 
 /******************************************************/
 /******************************************************/
@@ -6613,6 +6756,98 @@ void  BinaryDumpInFile(ELISE_fp &,const cXml_TopoTriplet &);
 void  BinaryUnDumpFromFile(cXml_TopoTriplet &,ELISE_fp &);
 
 std::string  Mangling( cXml_TopoTriplet *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_SingleDir
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_SingleDir & anObj,cElXMLTree * aTree);
+
+
+        Pt2dr & PIm();
+        const Pt2dr & PIm()const ;
+
+        Pt3dr & P1();
+        const Pt3dr & P1()const ;
+
+        Pt3dr & P2();
+        const Pt3dr & P2()const ;
+    private:
+        Pt2dr mPIm;
+        Pt3dr mP1;
+        Pt3dr mP2;
+};
+cElXMLTree * ToXMLTree(const cXml_SingleDir &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_SingleDir &);
+
+void  BinaryUnDumpFromFile(cXml_SingleDir &,ELISE_fp &);
+
+std::string  Mangling( cXml_SingleDir *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_ImDir
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_ImDir & anObj,cElXMLTree * aTree);
+
+
+        std::string & Name();
+        const std::string & Name()const ;
+
+        Pt3dr & P1OC();
+        const Pt3dr & P1OC()const ;
+
+        Pt3dr & P2OC();
+        const Pt3dr & P2OC()const ;
+
+        std::list< cXml_SingleDir > & ListDir();
+        const std::list< cXml_SingleDir > & ListDir()const ;
+    private:
+        std::string mName;
+        Pt3dr mP1OC;
+        Pt3dr mP2OC;
+        std::list< cXml_SingleDir > mListDir;
+};
+cElXMLTree * ToXMLTree(const cXml_ImDir &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_ImDir &);
+
+void  BinaryUnDumpFromFile(cXml_ImDir &,ELISE_fp &);
+
+std::string  Mangling( cXml_ImDir *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_ImSetDir
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_ImSetDir & anObj,cElXMLTree * aTree);
+
+
+        std::list< cXml_ImDir > & Ims();
+        const std::list< cXml_ImDir > & Ims()const ;
+    private:
+        std::list< cXml_ImDir > mIms;
+};
+cElXMLTree * ToXMLTree(const cXml_ImSetDir &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_ImSetDir &);
+
+void  BinaryUnDumpFromFile(cXml_ImSetDir &,ELISE_fp &);
+
+std::string  Mangling( cXml_ImSetDir *);
 
 /******************************************************/
 /******************************************************/
@@ -7201,10 +7436,14 @@ class cXml_SLSRay
 
         Pt3dr & P2();
         const Pt3dr & P2()const ;
+
+        std::list< Pt3dr > & P3();
+        const std::list< Pt3dr > & P3()const ;
     private:
         double mIndCol;
         Pt3dr mP1;
         Pt3dr mP2;
+        std::list< Pt3dr > mP3;
 };
 cElXMLTree * ToXMLTree(const cXml_SLSRay &);
 
@@ -8345,6 +8584,603 @@ void  BinaryDumpInFile(ELISE_fp &,const cXml_TriAngulationImMaster &);
 void  BinaryUnDumpFromFile(cXml_TriAngulationImMaster &,ELISE_fp &);
 
 std::string  Mangling( cXml_TriAngulationImMaster *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Triangle3DForTieP_WithPts
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Triangle3DForTieP_WithPts & anObj,cElXMLTree * aTree);
+
+
+        Pt3dr & P1();
+        const Pt3dr & P1()const ;
+
+        Pt3dr & P2();
+        const Pt3dr & P2()const ;
+
+        Pt3dr & P3();
+        const Pt3dr & P3()const ;
+
+        std::vector< int > & NumImSec();
+        const std::vector< int > & NumImSec()const ;
+
+        std::vector< std::string > & NamePts();
+        const std::vector< std::string > & NamePts()const ;
+
+        std::vector< Pt2dr > & Pts();
+        const std::vector< Pt2dr > & Pts()const ;
+    private:
+        Pt3dr mP1;
+        Pt3dr mP2;
+        Pt3dr mP3;
+        std::vector< int > mNumImSec;
+        std::vector< std::string > mNamePts;
+        std::vector< Pt2dr > mPts;
+};
+cElXMLTree * ToXMLTree(const cXml_Triangle3DForTieP_WithPts &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Triangle3DForTieP_WithPts &);
+
+void  BinaryUnDumpFromFile(cXml_Triangle3DForTieP_WithPts &,ELISE_fp &);
+
+std::string  Mangling( cXml_Triangle3DForTieP_WithPts *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_TriAngulationImMaster_WithPts
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_TriAngulationImMaster_WithPts & anObj,cElXMLTree * aTree);
+
+
+        std::string & NameMaster();
+        const std::string & NameMaster()const ;
+
+        std::vector< std::string > & NameSec();
+        const std::vector< std::string > & NameSec()const ;
+
+        std::vector< std::string > & NamePts();
+        const std::vector< std::string > & NamePts()const ;
+
+        std::vector< cXml_Triangle3DForTieP > & Tri();
+        const std::vector< cXml_Triangle3DForTieP > & Tri()const ;
+    private:
+        std::string mNameMaster;
+        std::vector< std::string > mNameSec;
+        std::vector< std::string > mNamePts;
+        std::vector< cXml_Triangle3DForTieP > mTri;
+};
+cElXMLTree * ToXMLTree(const cXml_TriAngulationImMaster_WithPts &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_TriAngulationImMaster_WithPts &);
+
+void  BinaryUnDumpFromFile(cXml_TriAngulationImMaster_WithPts &,ELISE_fp &);
+
+std::string  Mangling( cXml_TriAngulationImMaster_WithPts *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_MapCam
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_MapCam & anObj,cElXMLTree * aTree);
+
+
+        cCalibrationInternConique & PartieCam();
+        const cCalibrationInternConique & PartieCam()const ;
+
+        bool & Directe();
+        const bool & Directe()const ;
+    private:
+        cCalibrationInternConique mPartieCam;
+        bool mDirecte;
+};
+cElXMLTree * ToXMLTree(const cXml_MapCam &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_MapCam &);
+
+void  BinaryUnDumpFromFile(cXml_MapCam &,ELISE_fp &);
+
+std::string  Mangling( cXml_MapCam *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Homot
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Homot & anObj,cElXMLTree * aTree);
+
+
+        double & Scale();
+        const double & Scale()const ;
+
+        Pt2dr & Tr();
+        const Pt2dr & Tr()const ;
+    private:
+        double mScale;
+        Pt2dr mTr;
+};
+cElXMLTree * ToXMLTree(const cXml_Homot &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Homot &);
+
+void  BinaryUnDumpFromFile(cXml_Homot &,ELISE_fp &);
+
+std::string  Mangling( cXml_Homot *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_HomotPure
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_HomotPure & anObj,cElXMLTree * aTree);
+
+
+        double & Scale();
+        const double & Scale()const ;
+
+        Pt2dr & PtInvar();
+        const Pt2dr & PtInvar()const ;
+    private:
+        double mScale;
+        Pt2dr mPtInvar;
+};
+cElXMLTree * ToXMLTree(const cXml_HomotPure &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_HomotPure &);
+
+void  BinaryUnDumpFromFile(cXml_HomotPure &,ELISE_fp &);
+
+std::string  Mangling( cXml_HomotPure *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Trans
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Trans & anObj,cElXMLTree * aTree);
+
+
+        Pt2dr & Tr();
+        const Pt2dr & Tr()const ;
+    private:
+        Pt2dr mTr;
+};
+cElXMLTree * ToXMLTree(const cXml_Trans &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Trans &);
+
+void  BinaryUnDumpFromFile(cXml_Trans &,ELISE_fp &);
+
+std::string  Mangling( cXml_Trans *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_FulPollXY
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_FulPollXY & anObj,cElXMLTree * aTree);
+
+
+        int & Degre();
+        const int & Degre()const ;
+
+        double & Ampl();
+        const double & Ampl()const ;
+
+        std::vector< double > & Coeffs();
+        const std::vector< double > & Coeffs()const ;
+    private:
+        int mDegre;
+        double mAmpl;
+        std::vector< double > mCoeffs;
+};
+cElXMLTree * ToXMLTree(const cXml_FulPollXY &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_FulPollXY &);
+
+void  BinaryUnDumpFromFile(cXml_FulPollXY &,ELISE_fp &);
+
+std::string  Mangling( cXml_FulPollXY *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Map2dPol
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Map2dPol & anObj,cElXMLTree * aTree);
+
+
+        Box2dr & Box();
+        const Box2dr & Box()const ;
+
+        cTplValGesInit< int > & DegAddInv();
+        const cTplValGesInit< int > & DegAddInv()const ;
+
+        cXml_FulPollXY & MapX();
+        const cXml_FulPollXY & MapX()const ;
+
+        cXml_FulPollXY & MapY();
+        const cXml_FulPollXY & MapY()const ;
+    private:
+        Box2dr mBox;
+        cTplValGesInit< int > mDegAddInv;
+        cXml_FulPollXY mMapX;
+        cXml_FulPollXY mMapY;
+};
+cElXMLTree * ToXMLTree(const cXml_Map2dPol &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Map2dPol &);
+
+void  BinaryUnDumpFromFile(cXml_Map2dPol &,ELISE_fp &);
+
+std::string  Mangling( cXml_Map2dPol *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_EvolMap2dPol
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_EvolMap2dPol & anObj,cElXMLTree * aTree);
+
+
+        int & DegT();
+        const int & DegT()const ;
+
+        Pt2dr & IntervT();
+        const Pt2dr & IntervT()const ;
+
+        int & DegXY();
+        const int & DegXY()const ;
+
+        Box2dr & BoxXY();
+        const Box2dr & BoxXY()const ;
+
+        std::vector< cXml_Map2dPol > & PolOfT();
+        const std::vector< cXml_Map2dPol > & PolOfT()const ;
+    private:
+        int mDegT;
+        Pt2dr mIntervT;
+        int mDegXY;
+        Box2dr mBoxXY;
+        std::vector< cXml_Map2dPol > mPolOfT;
+};
+cElXMLTree * ToXMLTree(const cXml_EvolMap2dPol &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_EvolMap2dPol &);
+
+void  BinaryUnDumpFromFile(cXml_EvolMap2dPol &,ELISE_fp &);
+
+std::string  Mangling( cXml_EvolMap2dPol *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Map2DElem
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Map2DElem & anObj,cElXMLTree * aTree);
+
+
+        cTplValGesInit< cXmlHomogr > & Homog();
+        const cTplValGesInit< cXmlHomogr > & Homog()const ;
+
+        cTplValGesInit< cXml_Homot > & Homot();
+        const cTplValGesInit< cXml_Homot > & Homot()const ;
+
+        cTplValGesInit< cSimilitudePlane > & Sim();
+        const cTplValGesInit< cSimilitudePlane > & Sim()const ;
+
+        cTplValGesInit< cAffinitePlane > & Aff();
+        const cTplValGesInit< cAffinitePlane > & Aff()const ;
+
+        cTplValGesInit< cXml_MapCam > & Cam();
+        const cTplValGesInit< cXml_MapCam > & Cam()const ;
+
+        cTplValGesInit< cXml_Map2dPol > & Pol();
+        const cTplValGesInit< cXml_Map2dPol > & Pol()const ;
+
+        cTplValGesInit< cXml_HomotPure > & HomotPure();
+        const cTplValGesInit< cXml_HomotPure > & HomotPure()const ;
+
+        cTplValGesInit< cXml_Trans > & Trans();
+        const cTplValGesInit< cXml_Trans > & Trans()const ;
+    private:
+        cTplValGesInit< cXmlHomogr > mHomog;
+        cTplValGesInit< cXml_Homot > mHomot;
+        cTplValGesInit< cSimilitudePlane > mSim;
+        cTplValGesInit< cAffinitePlane > mAff;
+        cTplValGesInit< cXml_MapCam > mCam;
+        cTplValGesInit< cXml_Map2dPol > mPol;
+        cTplValGesInit< cXml_HomotPure > mHomotPure;
+        cTplValGesInit< cXml_Trans > mTrans;
+};
+cElXMLTree * ToXMLTree(const cXml_Map2DElem &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Map2DElem &);
+
+void  BinaryUnDumpFromFile(cXml_Map2DElem &,ELISE_fp &);
+
+std::string  Mangling( cXml_Map2DElem *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Map2D
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Map2D & anObj,cElXMLTree * aTree);
+
+
+        std::list< cXml_Map2DElem > & Maps();
+        const std::list< cXml_Map2DElem > & Maps()const ;
+    private:
+        std::list< cXml_Map2DElem > mMaps;
+};
+cElXMLTree * ToXMLTree(const cXml_Map2D &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Map2D &);
+
+void  BinaryUnDumpFromFile(cXml_Map2D &,ELISE_fp &);
+
+std::string  Mangling( cXml_Map2D *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_OneMeasure3DLineInIm
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_OneMeasure3DLineInIm & anObj,cElXMLTree * aTree);
+
+
+        std::string & NameLine3D();
+        const std::string & NameLine3D()const ;
+
+        Pt2dr & P1();
+        const Pt2dr & P1()const ;
+
+        Pt2dr & P2();
+        const Pt2dr & P2()const ;
+    private:
+        std::string mNameLine3D;
+        Pt2dr mP1;
+        Pt2dr mP2;
+};
+cElXMLTree * ToXMLTree(const cXml_OneMeasure3DLineInIm &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_OneMeasure3DLineInIm &);
+
+void  BinaryUnDumpFromFile(cXml_OneMeasure3DLineInIm &,ELISE_fp &);
+
+std::string  Mangling( cXml_OneMeasure3DLineInIm *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_SetMeasure3DLineInOneIm
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_SetMeasure3DLineInOneIm & anObj,cElXMLTree * aTree);
+
+
+        std::string & NameIm();
+        const std::string & NameIm()const ;
+
+        std::list< cXml_OneMeasure3DLineInIm > & Measures();
+        const std::list< cXml_OneMeasure3DLineInIm > & Measures()const ;
+    private:
+        std::string mNameIm;
+        std::list< cXml_OneMeasure3DLineInIm > mMeasures;
+};
+cElXMLTree * ToXMLTree(const cXml_SetMeasure3DLineInOneIm &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_SetMeasure3DLineInOneIm &);
+
+void  BinaryUnDumpFromFile(cXml_SetMeasure3DLineInOneIm &,ELISE_fp &);
+
+std::string  Mangling( cXml_SetMeasure3DLineInOneIm *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_SetMeasureGlob3DLine
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_SetMeasureGlob3DLine & anObj,cElXMLTree * aTree);
+
+
+        std::list< cXml_SetMeasure3DLineInOneIm > & AllMeasures();
+        const std::list< cXml_SetMeasure3DLineInOneIm > & AllMeasures()const ;
+    private:
+        std::list< cXml_SetMeasure3DLineInOneIm > mAllMeasures;
+};
+cElXMLTree * ToXMLTree(const cXml_SetMeasureGlob3DLine &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_SetMeasureGlob3DLine &);
+
+void  BinaryUnDumpFromFile(cXml_SetMeasureGlob3DLine &,ELISE_fp &);
+
+std::string  Mangling( cXml_SetMeasureGlob3DLine *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_One3DLine
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_One3DLine & anObj,cElXMLTree * aTree);
+
+
+        std::string & NameLine3D();
+        const std::string & NameLine3D()const ;
+
+        Pt3dr & Pt();
+        const Pt3dr & Pt()const ;
+
+        Pt3dr & Vec();
+        const Pt3dr & Vec()const ;
+    private:
+        std::string mNameLine3D;
+        Pt3dr mPt;
+        Pt3dr mVec;
+};
+cElXMLTree * ToXMLTree(const cXml_One3DLine &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_One3DLine &);
+
+void  BinaryUnDumpFromFile(cXml_One3DLine &,ELISE_fp &);
+
+std::string  Mangling( cXml_One3DLine *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cXml_Set3DLine
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXml_Set3DLine & anObj,cElXMLTree * aTree);
+
+
+        std::list< cXml_One3DLine > & AllLines();
+        const std::list< cXml_One3DLine > & AllLines()const ;
+    private:
+        std::list< cXml_One3DLine > mAllLines;
+};
+cElXMLTree * ToXMLTree(const cXml_Set3DLine &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXml_Set3DLine &);
+
+void  BinaryUnDumpFromFile(cXml_Set3DLine &,ELISE_fp &);
+
+std::string  Mangling( cXml_Set3DLine *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cOnePatch1I
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cOnePatch1I & anObj,cElXMLTree * aTree);
+
+
+        cTplValGesInit< double > & PrecH();
+        const cTplValGesInit< double > & PrecH()const ;
+
+        std::string & NamePatch();
+        const std::string & NamePatch()const ;
+
+        cXmlHomogr & PatchH();
+        const cXmlHomogr & PatchH()const ;
+    private:
+        cTplValGesInit< double > mPrecH;
+        std::string mNamePatch;
+        cXmlHomogr mPatchH;
+};
+cElXMLTree * ToXMLTree(const cOnePatch1I &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cOnePatch1I &);
+
+void  BinaryUnDumpFromFile(cOnePatch1I &,ELISE_fp &);
+
+std::string  Mangling( cOnePatch1I *);
+
+class cMes1Im
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cMes1Im & anObj,cElXMLTree * aTree);
+
+
+        std::string & NameIm();
+        const std::string & NameIm()const ;
+
+        cTplValGesInit< double > & PrecPointeByIm();
+        const cTplValGesInit< double > & PrecPointeByIm()const ;
+
+        std::list< cOnePatch1I > & OnePatch1I();
+        const std::list< cOnePatch1I > & OnePatch1I()const ;
+    private:
+        std::string mNameIm;
+        cTplValGesInit< double > mPrecPointeByIm;
+        std::list< cOnePatch1I > mOnePatch1I;
+};
+cElXMLTree * ToXMLTree(const cMes1Im &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cMes1Im &);
+
+void  BinaryUnDumpFromFile(cMes1Im &,ELISE_fp &);
+
+std::string  Mangling( cMes1Im *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
+class cSetOfPatches
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cSetOfPatches & anObj,cElXMLTree * aTree);
+
+
+        std::list< cMes1Im > & Mes1Im();
+        const std::list< cMes1Im > & Mes1Im()const ;
+    private:
+        std::list< cMes1Im > mMes1Im;
+};
+cElXMLTree * ToXMLTree(const cSetOfPatches &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cSetOfPatches &);
+
+void  BinaryUnDumpFromFile(cSetOfPatches &,ELISE_fp &);
+
+std::string  Mangling( cSetOfPatches *);
 
 /******************************************************/
 /******************************************************/

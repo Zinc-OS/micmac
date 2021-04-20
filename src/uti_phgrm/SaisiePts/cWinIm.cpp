@@ -80,7 +80,8 @@ ElImScroller * SCR(Visu_ElImScr &aVisu,const std::string & aName,bool ForceGray)
 
 cWinIm::cWinIm(cAppli_SaisiePts& anAppli,Video_Win aW,Video_Win aWT,cImage & aIm0) :
     Grab_Untill_Realeased(),
-    mAppli  (anAppli),
+    mAppli   (anAppli),
+    mUseMMPt (anAppli.Param().SectionWindows().UseMinMaxPt().Val()),
     mW (aW),
     mWT (aWT),
     mVWV (aW,StdPalOfFile(aIm0.Tif().name(),aW),Pt2di(10,10)),  // Sz  Incrustation
@@ -209,31 +210,33 @@ cWinIm::cWinIm(cAppli_SaisiePts& anAppli,Video_Win aW,Video_Win aWT,cImage & aIm
 
 
 
-    mCaseMin3        (new CaseGPUMT
+    mCaseMin3       ( mUseMMPt ? new CaseGPUMT
                       (
                           *mPopUp1Shift,"titi",Pt2di(0,0),
                           MMIcone("Min3").in(1) *255
                           )
-                      ),
-    mCaseMin5        (new CaseGPUMT
+                        : 0) ,
+    mCaseMin5        ( mUseMMPt ?  new CaseGPUMT
                       (
                           *mPopUp1Shift,"titi",Pt2di(1,0),
                           MMIcone("Min5").in(1) *255
                           )
-                      ),
-    mCaseMax3        (new CaseGPUMT
+                       : 0 ),
+    mCaseMax3        (mUseMMPt ? new CaseGPUMT
                       (
                           *mPopUp1Shift,"titi",Pt2di(0,2),
                           MMIcone("Max3").in(1) *255
                           )
-                      ),
-    mCaseMax5        (new CaseGPUMT
+                       : 0),
+    mCaseMax5        ( mUseMMPt ? new CaseGPUMT
                       (
                           *mPopUp1Shift,"titi",Pt2di(1,2),
                           MMIcone("Max5").in(1) *255
-                          )
+                          ) : 0
                       )
 {
+    if (anAppli.Param().Gama().Val() != 1.0)
+        mVWV.SetGamaCorr(anAppli.Param().Gama().Val());
     aIm0.SetLoaded();
     SetImage(&aIm0);
 }
@@ -495,6 +498,7 @@ void  cWinIm::SetPt(Clik aClk)
     if (aPIm==0)
         return;
 
+
     if (aClk.shifted() && aClk.controled())
     {
         ShowInfoPt(aPIm,true);
@@ -503,6 +507,10 @@ void  cWinIm::SetPt(Clik aClk)
         return;
     }
 
+    if ((aPIm->Saisie()->Etat()== eEPI_Valide) &&  (!aClk.controled()))
+    {
+         return;
+    }
 
     /*
    if ((!aClk.shifted()) && aClk.controled())
@@ -636,6 +644,7 @@ void  cWinIm::MenuPopUp(Clik aClk)
     mW.grab(*this);
     CaseGPUMT * aCase = mPopUpCur->PopAndGet();
 
+    if (! aCase) return;
 
 
     if (mPopUpCur==mPopUp1Shift)

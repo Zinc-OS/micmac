@@ -171,6 +171,8 @@ class cAppliMMByPair : public cAppliWithSetImage
       bool	   mExpImSec;
       bool mSuprImNoMasq;
       std::string mPIMsDirName;
+      std::string mSetHom;
+      double mTetaOpt;
 };
 
 /*****************************************************************/
@@ -294,13 +296,13 @@ std::string NameImage(tArcAWSI & anArc,bool Im1,bool ByEpi)
 
 cImaMM::cImaMM(const std::string & aName,cAppliWithSetImage & anAppli) :
    mCamGen     (anAppli.CamGenOfName(aName)),
-   mCamS       (mCamGen->DownCastCS()),
+   mCamS       (mCamGen ? mCamGen->DownCastCS() : 0 ),
    mNameIm     (aName),
    mBande      (""),
    mNumInBande (-1),
-   mC3         (mCamGen->OrigineProf()),
+   mC3         (mCamGen ? mCamGen->OrigineProf() : Pt3dr(0,0,0)),
    mC2         (mC3.x,mC3.y),
-   mAppli      (anAppli),
+   mAppli         (anAppli),
    mPtrTiffStd    (0),
    mPtrTiff8BGr   (0),
    mPtrTiff8BCoul (0),
@@ -747,7 +749,7 @@ CamStenope * cAppliWithSetImage::CamOfName(const std::string & aNameIm)
 
 cBasicGeomCap3D * cAppliWithSetImage::CamGenOfName(const std::string & aName)
 {
-    return mEASF.mICNM->StdCamGenerikOfNames(mOri,aName);
+    return mWithOri ? mEASF.mICNM->StdCamGenerikOfNames(mOri,aName) : 0;
 }
 
 void  cAppliWithSetImage::MakeStripStruct(const std::string & aPairByStrip,bool StripIsFirst)
@@ -791,13 +793,15 @@ void cAppliWithSetImage::AddDelaunayCple()
 
 }
 
-void cAppliWithSetImage::AddCoupleMMImSec(bool ExApero,bool SupressImInNoMasq,bool AddCple,bool ExpTxt,bool ExpImSec)
+void cAppliWithSetImage::AddCoupleMMImSec(bool ExApero,bool SupressImInNoMasq,bool AddCple, const std::string &SetHom, bool ExpTxt,bool ExpImSec,double aTetaOpt)
 {
       std::string aCom = MMDir() + "bin/mm3d AperoChImSecMM "
                          + BLANK + QUOTE(mEASF.mFullName)
                          + BLANK + mOri
 			 + BLANK + "ExpTxt=" + ToString(ExpTxt)
-			 + BLANK + "ExpImSec=" + ToString(ExpImSec);
+			 + BLANK + "ExpImSec=" + ToString(ExpImSec)
+             + BLANK + "SH=" + SetHom
+             + BLANK + "TetaOpt=" + ToString(aTetaOpt);
 	 
       if (mPenPerIm>0)
       {
@@ -1064,13 +1068,6 @@ tSomAWSI * cAppliWithSetImage::ImOfName(const std::string & aName)
 cAppliClipChantier::cAppliClipChantier(int argc,char ** argv) :
     cAppliWithSetImage (argc-1,argv+1,0)
 {
-/*
-  if (MPD_MM())
-  {
-      std::cout << "cAppliClipChantier \n";
-      getchar();
-  }
-*/
   std::string aPrefClip = "Cliped";
   std::string aOriOut;
   double      aMinSz = 500;
@@ -1154,9 +1151,10 @@ cAppliClipChantier::cAppliClipChantier(int argc,char ** argv) :
                                      + " Out=" + aNewIm;
 
                   System(aCom,false,true);
-                  ELISE_fp::MvFile(mEASF.mDir + aNewIm , mEASF.mDir+aDirOut + aNewIm);
+                  // ELISE_fp::MvFile(mEASF.mDir + aNewIm , mEASF.mDir+aDirOut + aNewIm);
 
                   std::string aNameOriOut = aCG->Save2XmlStdMMName(mEASF.mICNM,aOriOut,aNewIm,Pt2dr(aDec));
+                  ELISE_fp::MvFile(mEASF.mDir + aNewIm , mEASF.mDir+aDirOut + aNewIm);
                   aDirOriOut = DirOfFile(aNameOriOut);
                   DoMoveOri = true;
 
@@ -1330,8 +1328,9 @@ cAppliMMByPair::cAppliMMByPair(int argc,char ** argv) :
     mExpTxt        (false),
     mExpImSec      (true),
     mSuprImNoMasq  (false),
-    mPIMsDirName   ("Statue") // used in MMEnvStatute for differenciating PIMs-Forest from PIMs-Statue
-
+    mPIMsDirName   ("Statue"), // used in MMEnvStatute for differenciating PIMs-Forest from PIMs-Statue
+    mSetHom        (""),
+    mTetaOpt       (0.17)
 {
   if ((argc>=2) && (!mModeHelp))
   {
@@ -1364,7 +1363,10 @@ cAppliMMByPair::cAppliMMByPair(int argc,char ** argv) :
      {
         mStrQualOr = "High";
         // do not add the segondary images computed by apero, but do the computation of pair because some data are required anyway (for mask computation based on tie points for e.g)
-        mAddCpleImSec = false;
+        // mAddCpleImSec = false;
+        // Modif MPD  16/10/2017 car sinon ca plante quand forest est utilise sans FilePair
+        // vu lors du stage terrain a Murol (arbre sur muraille), suite demande Antoine Pinte
+        mAddCpleImSec = true;
         // do the computation whitout adding the pairs
         mRunAperoImSec= true;
         mHasVeget = true;
@@ -1440,9 +1442,10 @@ cAppliMMByPair::cAppliMMByPair(int argc,char ** argv) :
                     << EAM(mUseGpu,"UseGpu",false,"Use cuda (Def=false)")
                     << EAM(mDefCor,"DefCor",false,"Def corr (context condepend 0.5 Statue, 0.2 Forest)")
                     << EAM(mZReg,"ZReg",true,"Z Regul (context condepend,  0.05 Statue, 0.02 Forest)")
-   		    << EAM(mExpTxt,"ExpTxt",false,"Use txt tie points for determining image pairs and/or computing epipolar geometry (Def false, e.g. use dat format)")
-   		    << EAM(mExpImSec,"ExpImSec",false,"Export ImSec def=true (put false if set elsewhere)")
-
+   		            << EAM(mExpTxt,"ExpTxt",false,"Use txt tie points for determining image pairs and/or computing epipolar geometry (Def false, e.g. use dat format)")
+   		            << EAM(mSetHom,"SH",false,"Set of Hom, Def=\"\"")
+   		            << EAM(mExpImSec,"ExpImSec",false,"Export ImSec def=true (put false if set elsewhere)")
+                    << EAM(mTetaOpt,"TetaOpt",true,"For the choice of secondary images: Optimal angle of stereoscopy, in radian, def=0.17 (+or- 10 degree)")
   );
 
   // Par defaut c'est le meme comportement
@@ -1476,6 +1479,7 @@ cAppliMMByPair::cAppliMMByPair(int argc,char ** argv) :
       {
           AddLinePair(1,mExpTxt);
       }
+    
 
       if (mModeHelp)
           StdEXIT(0);
@@ -1492,7 +1496,7 @@ cAppliMMByPair::cAppliMMByPair(int argc,char ** argv) :
          AddDelaunayCple();
       if (mRunAperoImSec)
       {
-         AddCoupleMMImSec(BoolFind(mDo,'A'),mSuprImNoMasq,mAddCpleImSec,mExpTxt,mExpImSec);
+         AddCoupleMMImSec(BoolFind(mDo,'A'),mSuprImNoMasq,mAddCpleImSec,mSetHom,mExpTxt,mExpImSec,mTetaOpt);
       }
 
       if (EAMIsInit(&mFilePair))

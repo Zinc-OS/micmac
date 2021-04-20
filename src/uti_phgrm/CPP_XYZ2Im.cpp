@@ -43,6 +43,29 @@ Header-MicMac-eLiSe-25/06/2007*/
 */
 
 
+cMesureAppuiFlottant1Im *  GetMAFOfNameIm(cSetOfMesureAppuisFlottants & aSMAF,const std::string aNameIm,bool CreatIfNone)
+{
+   for 
+   (
+         std::list<cMesureAppuiFlottant1Im>::iterator itMAF=aSMAF.MesureAppuiFlottant1Im().begin();
+         itMAF!=aSMAF.MesureAppuiFlottant1Im().end();
+         itMAF++
+   )
+   {
+        if (itMAF->NameIm() == aNameIm)
+           return &(*itMAF);
+   }
+   if (CreatIfNone)
+   {
+       cMesureAppuiFlottant1Im aMAF;
+       aMAF.NameIm() = aNameIm;
+       aSMAF.MesureAppuiFlottant1Im().push_back(aMAF);
+       cMesureAppuiFlottant1Im * aRes = GetMAFOfNameIm(aSMAF,aNameIm,false);
+       ELISE_ASSERT(aRes,"Incoherence in GetMAFOfNameIm");
+       return aRes;
+   }
+   return 0;
+}
 
 
 
@@ -51,10 +74,11 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
     MMD_InitArgcArgv(argc,argv,2);
 
     std::string  aFullNC,aFilePtsIn,aFilePtsOut,aFilteredInput;
-    std::string XYZ = "X,Y,Z";
-    std::string IJ = "I,J";
+    std::string XYZ = "X,Y,Z (xml 3d in Homol mode)";
+    std::string IJ = "I,J  (xml 2d  in Homol mode)";
     bool aPoinIsImRef = true;
     bool aInputImWithZ = false;
+    std::vector<std::string>  anOptPtH;
 
     if (Ter2Im)
     {
@@ -78,6 +102,7 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
            LArgMain()  << EAM(aFilteredInput,"FilterInput",true,"To generate a file of input superposable to output",eSAM_IsOutputFile)
                        << EAM(aPoinIsImRef,"PointIsImRef",true,"Point must be corrected from cloud resolution def = true")
 		       << EAM(aInputImWithZ,"InputImWithZ",false,"Input Im point with Z (for Im2XYZ) def=false")
+		       << EAM(anOptPtH,"PtHom",true,"Option for hom =[SH,Im1,Im2]")
        );
     }
 
@@ -100,6 +125,44 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
         cElNuage3DMaille *  aNuage = aRMso.Nuage();
         ElCamera         * aCam    = aRMso.Cam();
 	
+        bool UseHom = false;
+        cDicoAppuisFlottant * aDAF=0;
+        cSetOfMesureAppuisFlottants * aSMAF = 0;
+        cMesureAppuiFlottant1Im *     aMAF  =0;
+        std::string aNameXMLTer="";
+        std::string aNameXMLIm="";
+
+        if (EAMIsInit(&anOptPtH))
+        {
+            ELISE_ASSERT(aNuage,"No Nuage in homol mode");
+            aNameXMLIm = aFilePtsIn ;
+            aNameXMLTer = aFilePtsOut ;
+
+            ELISE_ASSERT(anOptPtH.size()==3,"Bad size i  hom option");
+            std::string aSH=anOptPtH[0],aNameI1=anOptPtH[1],aNameI2=anOptPtH[2];
+            
+            aFilePtsIn = anICNM->Assoc1To2("NKS-Assoc-CplIm2Hom@"+ aSH+"@txt",aNameI1,aNameI2,true);
+            UseHom = true;
+            if (! ELISE_fp::exist_file(aFilePtsIn))
+            {
+                 std::string aBinFilePtsIn = anICNM->Assoc1To2("NKS-Assoc-CplIm2Hom@"+ aSH+"@dat",aNameI1,aNameI2,true);
+                 ELISE_ASSERT(ELISE_fp::exist_file(aBinFilePtsIn),"Nor txt nor dat file for homologous option");
+                 ElPackHomologue aPack = ElPackHomologue::FromFile(aBinFilePtsIn);
+                 aPack.StdPutInFile(aFilePtsIn);
+            }
+            aSMAF = OptStdGetFromPCP(aNameXMLIm,SetOfMesureAppuisFlottants);
+            if (aSMAF==0)
+            {
+                 aSMAF = new cSetOfMesureAppuisFlottants;
+            }
+            aMAF =  GetMAFOfNameIm(*aSMAF,aNameI2,true);
+            aDAF= OptStdGetFromPCP(aNameXMLTer,DicoAppuisFlottant);
+            if (aDAF==0)
+            {
+                 aDAF = new cDicoAppuisFlottant;
+            }
+        }
+
 
         if (! Ter2Im)
         {
@@ -112,7 +175,7 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
 
 	
         ELISE_fp aFIn(aFilePtsIn.c_str(),ELISE_fp::READ);
-        FILE *  aFOut = FopenNN(aFilePtsOut.c_str(),"w","XYZ2Im");
+        FILE *  aFOut =  UseHom ? 0 : FopenNN(aFilePtsOut.c_str(),"w","XYZ2Im");
 	
         char * aLine;
         std::vector<Pt2dr> aV2Ok;
@@ -132,6 +195,31 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
 
                 fprintf(aFOut,"%lf %lf\n",aPIm.x,aPIm.y);
             }
+            else if (UseHom)
+            {
+                Pt2dr aP1,aP2;
+                int aNb = sscanf(aLine,"%lf %lf %lf %lf",&aP1.x,&aP1.y,&aP2.x,&aP2.y);
+                ELISE_ASSERT(aNb==4,"Could not read 4 double values");
+                 
+                if (aPoinIsImRef)
+                   aP1 = aNuage->ImRef2Capteur (aP1);
+       		if (aNuage->CaptHasData(aP1))
+                {
+                   std::string aNamePt = "P" + ToString(int(aMAF->OneMesureAF1I().size()));
+
+                   cOneAppuisDAF anAp;
+                   anAp.Pt()   = aNuage->PreciseCapteur2Terrain(aP1);
+                   anAp.NamePt()   = aNamePt;
+                   anAp.Incertitude()   = Pt3dr(1,1,1);
+                   aDAF->OneAppuisDAF().push_back(anAp);
+
+// std::cout << "Daaaff " <<  aDAF->OneAppuisDAF().size() << " " << aFilePtsIn << "\n";
+                   cOneMesureAF1I aMesIm;
+                   aMesIm.PtIm() = aP2;
+                   aMesIm.NamePt() = aNamePt;
+                   aMAF->OneMesureAF1I().push_back(aMesIm);
+                }
+            }
             else
             {
                 Pt2dr aPIm;
@@ -142,29 +230,30 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
 		{
 			int aNb = sscanf(aLine,"%lf %lf %lf",&aPIm.x,&aPIm.y,&aInputZ);
                 	ELISE_ASSERT(aNb==3,"Could not read 3 double values");
-			std::cout << "2D Point + Z: ["<<aPIm.x<< ","<<aPIm.y<<","<<aInputZ<<"]\n";
+			// std::cout << "2D Point + Z: ["<<aPIm.x<< ","<<aPIm.y<<","<<aInputZ<<"]\n";
 		}
 		else
 		{
 			int aNb = sscanf(aLine,"%lf %lf",&aPIm.x,&aPIm.y);
                 	ELISE_ASSERT(aNb==2,"Could not read 2 double values");
-			std::cout << "2D Point: ["<<aPIm.x<< ","<<aPIm.y<<"]\n";
+			// std::cout << "2D Point: ["<<aPIm.x<< ","<<aPIm.y<<"]\n";
 		}
 		if (aNuage)
 		{
+                        Pt2dr aPIm0 = aPIm;
 			if (aPoinIsImRef)
-                    	aPIm = aNuage->ImRef2Capteur (aPIm);/* ici il y a un bug sous linux, segmention core dumped*/
+                    	    aPIm = aNuage->ImRef2Capteur (aPIm);/* ici il y a un bug sous linux, segmention core dumped*/
 
        			if (aNuage->CaptHasData(aPIm))
                 	{
                    		Pt3dr aP  = aNuage->PreciseCapteur2Terrain(aPIm);
                    		fprintf(aFOut,"%lf %lf %f\n",aP.x,aP.y,aP.z);
-                   		aV2Ok.push_back(aPIm);
+                   		aV2Ok.push_back(aPIm0);
                 	}
                 	else
                 	{
                     		HasEmpty = true;
-                    		std::cout << "Warn :: " << aPIm << " has no data in cloud\n";
+                    		std::cout << "Warn :: " << aPIm0 << " has no data in cloud\n";
                 	}
 		}
 		else if (aCam)
@@ -179,12 +268,22 @@ int TransfoCam_main(int argc,char ** argv,bool Ter2Im)
          {
              FILE *  aFFilter = FopenNN(aFilteredInput.c_str(),"w","XYZ2Im");
              for (int aKP=0 ; aKP<int(aV2Ok.size()) ; aKP++)
+             {
                 fprintf(aFFilter,"%lf %lf\n",aV2Ok[aKP].x,aV2Ok[aKP].y);
+             }
              ElFclose(aFFilter);
          }
 
         aFIn.close();
-        ElFclose(aFOut);
+        if (UseHom)
+        {
+            MakeFileXML(*aDAF , aNameXMLTer);
+            MakeFileXML(*aSMAF, aNameXMLIm);
+        }
+        else
+        {
+           ElFclose(aFOut);
+        }
 
         return 0;
     }
@@ -202,6 +301,151 @@ int Im2XYZ_main(int argc,char ** argv)
 {
     return TransfoCam_main(argc,argv,false);
 }
+
+ElRotation3D ListRot2RotPhys(const  std::list<ElRotation3D> & aLRot,const ElPackHomologue & aPack);
+std::list<ElRotation3D>  MatEssToMulipleRot(const  ElMatrix<REAL> & aMEss,double LBase);
+
+void Sho33( ElMatrix<REAL> aM)
+{
+    for (int aY=0 ; aY<3 ; aY++)
+      printf("  %f \t %f \t %f \n",aM(0,aY),aM(1,aY),aM(2,aY));
+}
+
+bool ShowMSG_ListRot2RotPhys=false;
+
+//int  PPMD_CalcEss(int argc,char ** argv)
+int  PPMD_MatEss2Orient(int argc,char ** argv)
+{
+   ShowMSG_ListRot2RotPhys = true;
+
+   Pt3dr aRefAll = vunit(Pt3dr(0.0743780117532993751,1.39204657194425052, -0.335883991159797279));
+   Pt3dr aRef2 = vunit(Pt3dr(0.08730003023518626, 1.6357168231794974 ,-0.393890910854981069));
+
+   std::string I1,I2,Cal;
+   std::string PostH="txt";
+   std::string SH="_ConvOLDFormat";
+   
+   ElInitArgMain
+   (
+           argc,argv,
+           LArgMain()  << EAMC(I1,"Name Im1")
+                       << EAMC(I2,"Name Im1")
+                       << EAMC(Cal,"Name Calib"),
+           LArgMain()
+   );
+
+   cInterfChantierNameManipulateur * anICNM = cInterfChantierNameManipulateur::BasicAlloc("./");
+   std::string   aFilePtsIn = anICNM->Assoc1To2("NKS-Assoc-CplIm2Hom@"+ SH+"@"+PostH,I1,I2,true);
+
+   ElPackHomologue  aPackInit =  ElPackHomologue::FromFile(aFilePtsIn);
+   CamStenope *   aCam1 = anICNM->StdCamStenOfNames(I1,Cal);
+   CamStenope *   aCam2 = anICNM->StdCamStenOfNames(I2,Cal);
+
+   ElPackHomologue  aPackPh = aCam1->F2toPtDirRayonL3(aPackInit,aCam2);
+
+   std::vector<double> aVMatPy({ -3.48751824,  20.52539487,-361.5038316,  101.79664035,  -6.19477011,
+  -18.78353249,  351.48896237,  -22.88157752,1});
+
+   ElMatrix<REAL>  aMatPy(3,3);
+   for (int aX=0 ; aX<3 ; aX++)
+   {
+      for (int aY=0 ; aY<3 ; aY++)
+      {
+          aMatPy(aX,aY) = aVMatPy.at(aX+3*aY);
+      }
+   }
+/*
+ [[  -3.48751824   20.52539487 -361.5038316 ]
+ [ 101.79664035   -6.19477011  -18.78353249]
+ [ 351.48896237  -22.88157752   1.        ]]
+
+*/
+   ElMatrix<REAL> aMM_MEss = aPackPh.MatriceEssentielle(true);
+   aMM_MEss *= 1/aMM_MEss(2,2);
+
+   ElRotation3D aR1toW(Pt3dr(0,0,0),0,0,PI);
+   std::cout << "==== aR1ToMonde === \n";
+   Sho33(aR1toW.Mat());
+
+  
+   for (int aKMat=0 ; aKMat<1 ; aKMat++)
+   {
+      std::cout << "===============\n";
+      bool PyMath = (aKMat==0);
+      ElMatrix<REAL> aMEss = PyMath ? aMatPy : aMM_MEss;
+      Sho33(aMEss);
+    
+      std::list<ElRotation3D>  aLR = MatEssToMulipleRot(aMEss,1.0);
+      for (const auto & aR : aLR)
+      {
+           std::cout << "=====TR=" << aR.inv().tr() << "\n";
+           Sho33( aR.inv().Mat());
+      }
+
+      // Orientation Monde to Cam de la camera 1
+      ElRotation3D  aR1to2 = ListRot2RotPhys(aLR,aPackPh);
+      ElRotation3D  aR2toW = aR1toW * aR1to2.inv();
+
+
+
+      std::cout << "WINN = " << aR2toW.tr() << "\n";
+      Sho33(aR2toW.Mat());
+   }
+   if (0)
+   {
+       std::cout << "Refpts " << aRef2  << " " << aRefAll << "\n";
+
+       ElMatrix<REAL> aSvd1(3,3),aDiag(3,3),aSvd2(3,3);
+       svdcmp_diag(aMatPy,aSvd1,aDiag,aSvd2,true);
+       std::cout << " ================  SVD1 ============\n";
+       Sho33(aSvd1);
+       std::cout << " ================  DIAG ============\n";
+       Sho33(aDiag);
+       std::cout << " ================  SVD2 ============\n";
+       Sho33(aSvd2);
+   }
+   {
+       ElMatrix<REAL> MTest =  ElMatrix<REAL>::Rotation(0,0,PI/2);
+       Sho33(MTest);
+   }
+
+
+   return EXIT_SUCCESS;
+}
+
+int  XXX_PPMD_MatEss2Orient(int argc,char ** argv)
+{
+   std::vector<double> VMat;
+   ElInitArgMain
+   (
+           argc,argv,
+           LArgMain()  << EAMC(VMat,"Matrice as vector of nine double"),
+           LArgMain()
+   );
+   ELISE_ASSERT(VMat.size()==9,"Bad size 4 essential matrix");
+
+   ElMatrix<REAL>  aMat(3,3);
+   for (int aX=0 ; aX<3 ; aX++)
+   {
+      for (int aY=0 ; aY<3 ; aY++)
+      {
+          aMat(aX,aY) = VMat.at(aX+3*aY);
+          // aMat(aY,aX) = VMat.at(aX+3*aY);
+      }
+   }
+
+   std::list<ElRotation3D> LM=   MatEssToMulipleRot(aMat,1.0);
+   for (const auto & aR : LM)
+   {
+        std::cout << aR.tr() << "\n";
+   }
+
+
+   return EXIT_SUCCESS;
+}
+
+
+
 /*
 int main(int argc,char ** argv)
 {

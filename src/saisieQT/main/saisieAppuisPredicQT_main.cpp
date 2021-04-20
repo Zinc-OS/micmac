@@ -16,7 +16,12 @@ void SaisieAppuisPredic(int argc, char ** argv,
                       bool &aForceGray,
                       double &aZMoy,
                       double &aZInc,
-                      std::string & aInputSec);
+                      std::string & aInputSec,
+                      bool & WithMaxMinPt,
+		      double & aGama,
+                      std::string & aPatFilter,
+                      double & aDistMax
+       );
 
 
 using namespace std;
@@ -43,6 +48,7 @@ int saisieAppuisPredicQT_main(int argc, char *argv[])
                 "* [Name=WBlur] REAL :: {Size IN GROUND GEOMETRY of bluring for target}\n"
                 "* [Name=Type] string :: {in [MaxLoc,MinLoc,GeoCube]}\n"
                 "* [Name=ForceGray] bool :: {Force gray image, def=false}\n\n"
+                "* [Name=Gama] double :: {gama, def = 1.0}\n\n"
 
                 "Example:\nmm3d " + app.applicationName() + " IMG_558{0-9}[1].tif RadialBasic gcp.xml measures.xml\n\n"
                 "NB: visual interface for argument edition available with command\n\n mm3d v" + app.applicationName() + "\n\n";
@@ -72,6 +78,7 @@ int saisieAppuisPredicQT_main(int argc, char *argv[])
     std::string aInputSec;
 
     bool aForceGray = false;
+    double aGama = 1.0;
 
     settings.beginGroup("Misc");
     aNameMesure = settings.value("defPtName", QString("100")).toString().toStdString();
@@ -87,7 +94,10 @@ int saisieAppuisPredicQT_main(int argc, char *argv[])
         argv[0] = (char*) "SaisieAppuisPredicQT";
     }
 
-    SaisieAppuisPredic(argc, argv, aSzWin, aNbFen, aFullName, aDir, aName, aNamePt, aNameOri, aModeOri, aNameMesure, aTypePts, aMasq3D,aPIMsFilter,aFlou, aForceGray, aZMoy, aZInc, aInputSec);
+    bool WithMaxMinPt=false;
+    std::string aPatF;
+    double aDistMax;
+    SaisieAppuisPredic(argc, argv, aSzWin, aNbFen, aFullName, aDir, aName, aNamePt, aNameOri, aModeOri, aNameMesure, aTypePts, aMasq3D,aPIMsFilter,aFlou, aForceGray, aZMoy, aZInc, aInputSec,WithMaxMinPt, aGama,aPatF,aDistMax);
 
     if (!MMVisualMode)
     {
@@ -120,6 +130,8 @@ int saisieAppuisPredicQT_main(int argc, char *argv[])
                 << QString("+Sauv=") + QString(aNameMesure.c_str())
                 << QString("+SzWx=") + QString::number(aSzWin.x)
                 << QString("+SzWy=") + QString::number(aSzWin.y)
+                << QString("+UseMinMaxPt=") + QString(ToString(WithMaxMinPt).c_str())
+
                 << QString("+NbFx=") + QString::number(aNbFen.x)
                 << QString("+NbFy=") + QString::number(aNbFen.y)
                 << QString("+TypePts=") + QString(aTypePts.c_str());
@@ -156,6 +168,9 @@ int saisieAppuisPredicQT_main(int argc, char *argv[])
 
         if (EAMIsInit(&aForceGray))
             input << QString("+ForceGray=") + QString(aForceGray ? "1" : "0");
+
+        if (EAMIsInit(&aGama))
+            input << QString("+Gama=") + QString::number(aGama);
 
         char **output;
 

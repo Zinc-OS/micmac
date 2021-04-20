@@ -38,7 +38,7 @@ English :
 Header-MicMac-eLiSe-25/06/2007*/
 #include "StdAfx.h"
 
-#if (ELISE_QT_VERSION >= 4)
+#if ELISE_QT
 #include "general/visual_mainwindow.h"
 #endif
 
@@ -147,6 +147,7 @@ void DoDevelopp(int aSz1,int aSz2)
         std::string aCom = MM3dBinFile_quotes("PastDevlop") + " " + protect_spaces(aNOri) + " Sz1=" +ToString(aSz1) + " Sz2="+ToString(aSz2);
 
         if (TheGlobSFS!="") aCom = aCom+ " " + TheGlobSFS;
+        std::cout<<aCom<<std::endl;
 
         taskName = string( "T" ) + ToString( iImage ) + "_";
         aGPAO.GetOrCreate( taskName, aCom ); // always call PastDevlop (in case asked resolution changed)
@@ -154,7 +155,6 @@ void DoDevelopp(int aSz1,int aSz2)
     }
 
     aGPAO.GenerateMakeFile(MkFT);
-
     DoMkT();
 }
 
@@ -326,6 +326,10 @@ int MultiEch(int argc,char ** argv, const std::string &aArg="")
                     +  g_toolsOptions
                     /*+  ignoreMinMaxStr*/; // using only min or max in low resolution may not produce enough point
 
+
+            if (TheGlobSFS!="")
+                    aSsR += " isSFS=true";
+
             System(aSsR,true);
             DoMkT();
         }
@@ -340,8 +344,12 @@ int MultiEch(int argc,char ** argv, const std::string &aArg="")
                 +  std::string("ForceByDico=1 ")
                 +  g_toolsOptions
                 +  ignoreMinMaxStr + ' '
-                +  " ratio=" + ToString(ann_closeness_ratio) + ' '
-                +  NKS();
+                +  " ratio=" + ToString(ann_closeness_ratio);
+
+        if (TheGlobSFS!="")
+                aSFR += " isSFS=true";
+
+        aSFR += " " + NKS();
 
         System(aSFR,true);
         DoMkT();
@@ -396,10 +404,13 @@ int All(int argc,char ** argv, const std::string &aArg="")
                 +  std::string("ForceByDico=1 ")
                 +  g_toolsOptions
                 +  ignoreMinMaxStr + ' '
-                +  " ratio=" + ToString(ann_closeness_ratio) + ' '
-                +  NKS();
+                +  " ratio=" + ToString(ann_closeness_ratio) ;
 
+        if (TheGlobSFS!="")
+                aSFR += " isSFS=true";
 
+        aSFR += " " + NKS();
+        std::cout<<aSFR<<std::endl<<std::endl;
         System(aSFR,true);
 
         DoMkT();
@@ -487,8 +498,11 @@ int Line(int argc,char ** argv, const std::string &aArg="")
                 +  std::string("ForceByDico=1 ")
                 +  g_toolsOptions
                 +  ignoreMinMaxStr + ' '
-                +  " ratio=" + ToString(ann_closeness_ratio) + ' '
-                +  NKS();
+                +  " ratio=" + ToString(ann_closeness_ratio);
+        if (TheGlobSFS!="")
+                aSFR += " isSFS=true";
+
+        aSFR += " " + NKS();
 
         std::cout << aSFR << "\n";
         System(aSFR,true);
@@ -542,8 +556,11 @@ int File(int argc,char ** argv, const std::string &aArg="")
                 +  std::string("ForceByDico=1 ")
                 +  g_toolsOptions
                 +  ignoreMinMaxStr + ' '
-                +  " ratio=" + ToString(ann_closeness_ratio) + ' '
-                +  NKS();
+                +  " ratio=" + ToString(ann_closeness_ratio);
+        if (TheGlobSFS!="")
+                aSFR += " isSFS=true";
+
+        aSFR += " " + NKS();
 
 
         std::cout << aSFR << "\n";
@@ -756,7 +773,7 @@ void DoConstructGraph( const string &i_outputFilename, size_t i_nbMaxPointsPerIm
         if ( nbPoints==0 ) continue;
 
         pSrc = &( ( *itSrc )[0] );
-        memcpy( pDst, pSrc, nbPoints*sizeof( DigeoPoint ) );
+        memcpy( static_cast<void*>(pDst), pSrc, nbPoints*sizeof( DigeoPoint ) );
         pDst += nbPoints;
         while (nbPoints--) *itIndex++ = i;
     }
@@ -946,8 +963,7 @@ void Del_MkTapioca(string MkFT)
 
 int Tapioca_main(int argc,char ** argv)
 {
-#if(ELISE_QT_VERSION >= 4)
-
+#if ELISE_QT
     if (MMVisualMode)
     {
         QApplication app(argc, argv);
@@ -997,7 +1013,7 @@ int Tapioca_main(int argc,char ** argv)
     {
         aFullDir = argv[1];
 
-#if(ELISE_windows)
+#if (ELISE_windows)
         replace( aFullDir.begin(), aFullDir.end(), '\\', '/' );
 #endif
         SplitDirAndFile(aDir,aPat,aFullDir);
@@ -1006,7 +1022,7 @@ int Tapioca_main(int argc,char ** argv)
         if ( isUsingSeparateDirectories() )
             ELISE_fp::MkDirSvp( MMTemporaryDirectory() );
         else
-            ELISE_fp::MkDirSvp( aDir+"Tmp-MM-Dir/");
+            ELISE_fp::MkDirSvp( aDir + "Tmp-MM-Dir/");
 
 
     aPatOri = aPat;
@@ -1031,7 +1047,6 @@ int Tapioca_main(int argc,char ** argv)
 
     cTplValGesInit<std::string>  aTplFCND;
     anICNM = cInterfChantierNameManipulateur::StdAlloc(argc,argv,aDir,aTplFCND);
-
 
     MakeXmlXifInfo(aFullDir,anICNM);
 
@@ -1103,7 +1118,7 @@ int Tapioca_main(int argc,char ** argv)
 
 /************************************************************************/
 /*                                                                      */
-/*             Nouvelle commnde, compatible vTools                      */
+/*             Nouvelle commande, compatible vTools                      */
 /*                                                                      */
 /************************************************************************/
 
@@ -1325,7 +1340,7 @@ class cAppliMakeFileHom
 
    En contrepartie de l'accessibilite au code source et des droits de copie,
    de modification et de redistribution accordes par cette licence, il n'est
-   offert aux utilisateurs qu'une garantie limitee.  Pour les mêmes raisons,
+   offert aux utilisateurs qu'une garantie limitee.  Pour les mï¿½mes raisons,
    seule une responsabilite restreinte pese sur l'auteur du programme,  le
    titulaire des droits patrimoniaux et les concedants successifs.
 

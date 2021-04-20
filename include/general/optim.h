@@ -42,12 +42,15 @@ Header-MicMac-eLiSe-25/06/2007*/
 #ifndef _ELISE_GENERAL_OPTIM_H
 #define _ELISE_GENERAL_OPTIM_H
 
+extern bool DEBUG_LSQ;
+
 class cOneEqCalcVarUnkEl
 {
      public :
          cOneEqCalcVarUnkEl(double anO,double aPds) :
             mO   (anO*aPds),
-            mPds (aPds)
+            mPds (aPds),
+            mRes (0)
          {
          }
 
@@ -1445,7 +1448,31 @@ class cEq12Parametre
         std::pair<ElMatrix<double>,Pt3dr> ComputeNonOrtho();
 
         // Intrinseques + extrinseques
-        std::pair<ElMatrix<double>,ElRotation3D > ComputeOrtho();
+        std::pair<ElMatrix<double>,ElRotation3D > ComputeOrtho(bool *Ok=0);
+
+        static CamStenope * Camera11Param
+                            (
+                                const Pt2di&               aSzCam,
+                                bool                       isFraserModel,
+                                const std::vector<Pt3dr> & aVCPCur,
+                                const std::vector<Pt2dr> & aVImCur,
+                                double & Alti ,
+                                double & Prof
+                            );
+
+        static CamStenope * RansacCamera11Param
+                            (
+                                const Pt2di&               aSzCam,
+                                bool                       isFraserModel,
+                                const std::vector<Pt3dr> & aVCPCur,
+                                const std::vector<Pt2dr> & aVImCur,
+                                double & Alti ,
+                                double & Prof,
+                                int    aNbTest,
+                                double  aPropInlier,
+                                int     aNbMaxTirage
+                            );
+
 
     private :
         L2SysSurResol mSys;

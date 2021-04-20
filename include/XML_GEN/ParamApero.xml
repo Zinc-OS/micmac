@@ -108,6 +108,7 @@
     <eCalibAutomFour19x2>                 </eCalibAutomFour19x2>
     <eCalibAutomEbner>                 </eCalibAutomEbner>
     <eCalibAutomBrown>                 </eCalibAutomBrown>
+    <eCalibAutomFishEyeStereographique>     </eCalibAutomFishEyeStereographique>
     <eCalibAutomNone>                 </eCalibAutomNone>
 </enum>
 
@@ -128,6 +129,22 @@
     <eVerifDZ> </eVerifDZ>
 <!--  Residu Per Im -->
     <eVerifResPerIm> </eVerifResPerIm>
+</enum>
+
+
+<enum Name="eTypeResulPtsBundle">
+    <eTRPB_Ok>      </eTRPB_Ok>
+    <eTRPB_InsufPoseInit>      </eTRPB_InsufPoseInit>
+    <eTRPB_PdsResNull> </eTRPB_PdsResNull>
+    <eTRPB_NotInMasq3D> </eTRPB_NotInMasq3D>
+    <eTRPB_BSurH>   </eTRPB_BSurH>
+    <eTRPB_Behind>   </eTRPB_Behind>
+    <eTRPB_VisibIm> </eTRPB_VisibIm>
+    <eTRPB_OutIm> </eTRPB_OutIm>
+    <eTRPB_PbInterBundle> </eTRPB_PbInterBundle>
+    <eTRPB_RatioDistP2Cam> </eTRPB_RatioDistP2Cam>
+    <eTRPB_Unknown> </eTRPB_Unknown>
+    <eTRPB_NbVals> </eTRPB_NbVals>
 </enum>
 
 
@@ -605,6 +622,8 @@
               <GpsOffset Nb="*">
                   <ValInit Nb="1" Type="Pt3dr"> </ValInit>
                   <Id Nb="1" Type="std::string"> </Id>
+                  <!-- Si pas d'incertitude, aucun rappel sur la valeur initiale -->
+                  <Inc Nb="?" Type="Pt3dr"> </Inc>
               </GpsOffset>
 
               <CalibrationCameraInc Nb="*">
@@ -748,6 +767,7 @@
                     <FilterConnecBy Nb="?" Type="std::string"> </FilterConnecBy>
                     
                     <MEP_SPEC_MST Nb="?"> 
+		         <MSTBlockRigid Nb="?" Type="std::string" > </MSTBlockRigid> <!-- Name file bloc --> 
                          <Show Nb="?" Type="bool" Def="false"> </Show> 
 
                     <!-- On privilegie systematiquement les poses pour lesquelles on trouve un
@@ -842,6 +862,7 @@
 
 		        <PosId Nb="?" Type="std::string"> </PosId> <!-- Le string est ignore --> 
 		        <PosFromBDOrient Nb="?" Type="std::string"> </PosFromBDOrient>
+		        <PosFromBlockRigid Nb="?" Type="std::string"> </PosFromBlockRigid> <!-- Name file bloc --> 
 		        <PosFromBDAppuis Nb="?"> 
 			      <Id Nb="1" Type="std::string"> </Id>
 			      <NbTestRansac Nb="1" Type="int"> </NbTestRansac>
@@ -952,6 +973,35 @@ se limite a tester les 2 algo et a selectionner le meilleur. A priori peut pas f
 
 
         <SectionChantier Nb="1">
+              <!-- This section is used when we want to force a pose to be closed to a value -->
+              <RappelPose Nb="?">
+                  <IdOrient Nb="1" Type="std::string"> </IdOrient>
+                  <SigmaC  Nb="1" Type="double">  </SigmaC> <!-- Ground Units -->
+                  <SigmaR  Nb="1" Type="double">  </SigmaR> <!-- Radian -->
+                  <PatternApply  Nb="1" Type="cElRegex_Ptr">  </PatternApply>
+              </RappelPose>
+
+              <!-- Si >=0, l'attribut de ce numero est utilise comme ponderation de points dans le nouveau format -->
+              <NumAttrPdsNewF Nb="?" Type="int" Def="-1"> </NumAttrPdsNewF>
+
+              <RatioMaxDistCS  Type="double" Nb="?" Def="30.0" > </RatioMaxDistCS>
+              <!-- Permet d'eliminer les tie points de maniere reproductible
+                   [7,1,13,4]  => elimine ceux dont le numero est egal a 1%7 et a 4 % 13
+              -->
+              <DebugVecElimTieP  Type="std::string" Nb="?" > </DebugVecElimTieP>
+
+              <DoStatElimBundle Nb="?" Type="int"> </DoStatElimBundle>
+              <UseExportImageResidu  Nb="?"> 
+                   <SzByPair Nb="?" Type="double" Def="30"> </SzByPair> 
+                   <SzByPose Nb="?" Type="double" Def="50"> </SzByPose> 
+                   <SzByCam  Nb="?" Type="double" Def="100"> </SzByCam> 
+                   <!-- Utilise pour le filtrag gaussien -->
+                   <NbMesByCase  Nb="?" Type="double" Def="10"> </NbMesByCase> 
+                   <AeroExport Nb="1" Type="std::string">    </AeroExport>
+
+                   <GeneratePly Nb="?" Type="bool" Def="true">   </GeneratePly>
+                   <SzOrtho Nb="?" Type="int" Def="-1"> </SzOrtho>
+              </UseExportImageResidu>
 
               <UseRegulDist  Type="bool" Nb="?" Def="false"> </UseRegulDist>
               <GBCamSupresStenCam  Type="bool" Nb="?" Def="true"> </GBCamSupresStenCam>
@@ -996,6 +1046,8 @@ se limite a tester les 2 algo et a selectionner le meilleur. A priori peut pas f
               -->
              <ThresholdWarnPointsBehind Nb="?" Type="double" Def="0.01"></ThresholdWarnPointsBehind>
 
+             <!-- Used to test alternative solution to linear solution of least square -->
+             <ExportMatrixMarket Nb="?" Type="bool" Def="false"> </ExportMatrixMarket>
         </SectionChantier>
 
 
@@ -1090,9 +1142,13 @@ normalises en echelle et/ou en translation -->
                           <AfterCompens Nb="?" Type="bool" Def="true"></AfterCompens>
 			  <PatternNameApply Nb="?" Type="std::string" Def=".*"> </PatternNameApply>
 			  <PatternNameEstim Nb="?" Type="std::string" Def=".*"> </PatternNameEstim>
+                          <FileExportDir Nb="?" Type="std::string"> </FileExportDir>
+                          <FileExportInv Nb="?" Type="std::string"> </FileExportInv>
 
                           <ModeBascule Nb="1" UnionType="true">
                                <BasculeOnPoints Nb="?">
+                             <!-- Permet de forcer a partir d'une solution existante stockee dans un xml -->
+                                   <ForceSol Nb="?" Type="std::string"> </ForceSol>
                           <!-- Si elle donnee, elle force le centre et tout les triplets
                               le contiennent
                           -->
@@ -1375,6 +1431,8 @@ normalises en echelle et/ou en translation -->
 			     <PondSurf Nb="?" RefType="PonderationPackMesure"> </PondSurf>
                              <!-- TRI VALEUR Si on le donne : x =Z, y = Poids compens z=seuil -->
                              <RappelOnZ Nb="?">  
+			           <!-- Si KeyGrpApply est init, ne s'applique que quand toutes les cameras sont du meme KeyGrpApply -->
+			           <KeyGrpApply Nb="?" Type="std::string"> </KeyGrpApply>
                                    <Z Nb="1" Type="double"> </Z>
                                    <!-- Incertitude pour l'estimation et la compensation -->
                                    <IncC Nb="1" Type="double"> </IncC>
@@ -1536,6 +1594,7 @@ normalises en echelle et/ou en translation -->
 		          <PatternSel Nb="?" Type="std::string" Def=".*" > </PatternSel>
 			  <NameFileXml    Nb="?" Type="std::string"  > </NameFileXml>
 			  <NameFileTxt    Nb="?" Type="std::string"  > </NameFileTxt>
+			  <NameFileJSON    Nb="?" Type="std::string"  > </NameFileJSON>
 			  <TextComplTxt Nb="?" Type="std::string">  </TextComplTxt>
 		     </ExportPtsFlottant>
 
@@ -1596,6 +1655,7 @@ normalises en echelle et/ou en translation -->
                                <SymPts Nb="?" Type="bool" Def="true"> </SymPts>
                           </ExportNuageByImage>
                           <PlyModeBin Nb="?" Def="true" Type="bool"> </PlyModeBin>
+                          <SavePtsCol Nb="?" Def="true" Type="bool"> </SavePtsCol>
                           <!-- Pour l'instant par defaut mode ply -->
 	                  <NameRefLiaison Nb="*" Type="std::string"> </NameRefLiaison>
 
@@ -1642,12 +1702,14 @@ normalises en echelle et/ou en translation -->
                           <NuagePutGCPCtrl Nb="?">
                                <NameGCPIm Nb="1" Type="std::string"> </NameGCPIm>
                                <NameGCPTerr Nb="1" Type="std::string"> </NameGCPTerr>
-			       <ScaleVec Nb="1" Type="double"> </ScaleVec>
-                            <!--   <StepDr   Nb="1" Type="double">      </StepDr>
+			       				<ScaleVec Nb="1" Type="double"> </ScaleVec>
+                            	<!--   <StepDr   Nb="1" Type="double">      </StepDr>
                                <RabDr    Nb="?" Type="double" Def="0.0">      </RabDr>
                                <ColRayInter    Nb="1" Type="Pt3di">      </ColRayInter>
                                <Epais     Nb="?" Type="double">      </Epais> -->
                           </NuagePutGCPCtrl>
+
+						  <NormByC Nb="?" Type="int"> </NormByC>
 
                      </ExportNuage>
 
@@ -1727,14 +1789,26 @@ normalises en echelle et/ou en translation -->
     <NameImMax Nb="?" Type="std::string">         </NameImMax>
 </XmlSauvExportAperoOneAppuis>
 
+<XmlSauvExportAperoOneMult  Nb="1" Class="true" ToReference="true">
+     <Multiplicity Nb="1" Type="int"> </Multiplicity>
+     <Residual  Nb="1" Type="double"> </Residual>
+     <NbPts  Nb="1" Type="int">       </NbPts>
+     <PercOk Nb="1" Type="double">    </PercOk>
+</XmlSauvExportAperoOneMult>
+
 <XmlSauvExportAperoOneIter Nb="1" Class="true" ToReference="true">
     <OneAppui  Nb="*" RefType="XmlSauvExportAperoOneAppuis"> </OneAppui>
     <OneIm Nb="*" RefType="XmlSauvExportAperoOneIm"> </OneIm>
+    <OneMult Nb="*" RefType="XmlSauvExportAperoOneMult"> </OneMult>
     <AverageResidual Nb="1" Type="double">  </AverageResidual>
     <NumIter Nb="1" Type="int"> </NumIter>
     <NumEtape Nb="1" Type="int"> </NumEtape>
     <EvolMax Nb="?" Type="double"> </EvolMax>
     <EvolMoy Nb="?" Type="double"> </EvolMoy>
+
+    <ImWorstRes Nb="?" Type="std::string"> </ImWorstRes>
+    <WorstRes Nb="?" Type="double">   </WorstRes>
+
 </XmlSauvExportAperoOneIter>
 
 <XmlSauvExportAperoGlob Nb="1" Class="true" ToReference="true">

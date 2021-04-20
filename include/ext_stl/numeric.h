@@ -350,12 +350,20 @@ template <class TVal> void SplitArrounKthValue(TVal * Data,int aNb,int aKth)
        return;
    }
 
-/*
-std::cout << " K0 " << aK0 << " K1 " << aK1 << " NB " << aNb << " Kth " << aKth << "\n";
-for (int aK=0; aK< aNb ; aK++) std::cout << Data[aK] << " ";
-std::cout << "\n";
-*/
-// getchar();
+   // Cas degenere, on teste toutes les valeurs egales
+   {
+      int aNbV0 = 0;
+      TVal aV0 = Data[0];
+      for (int aKv=0 ; aKv<aNb ; aKv++)
+      {
+          aNbV0 += (Data[aKv] == aV0);
+      }
+      if (aNbV0==aNb)
+      {
+          return;
+      }
+   }
+
    // A la fin K0=K1 et elle sont bien splite autour de la moyenne
    if (aK0 == aKth)  return;
 
@@ -440,6 +448,22 @@ template <class TVal> TVal KthValProp(std::vector<TVal> & aV,double aProp)
 }
 
 double MedianPond(std::vector<Pt2df> &  aV,int * aKMed=0);
+
+template <class Type,class TFctr> Pt3dr  P3DMed(const Type & aCont,const TFctr & aFctr)
+{
+     std::vector<double>  mCX;
+     std::vector<double>  mCY;
+     std::vector<double>  mCZ;
+
+     for (const auto & anObj : aCont)
+     {
+         Pt3dr aP = aFctr(anObj);
+         mCX.push_back(aP.x);
+         mCY.push_back(aP.y);
+         mCZ.push_back(aP.z);
+     }
+     return Pt3dr(MedianeSup(mCX),MedianeSup(mCY),MedianeSup(mCZ));
+}
 
 
 

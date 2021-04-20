@@ -195,7 +195,7 @@ Pt2dr TT_CorrelBasique
 
 
 
-cResulRechCorrel<int> TT_RechMaxCorrelBasique
+cResulRechCorrel   TT_RechMaxCorrelBasique
                       (
                              const tTImTiepTri & Im1,
                              const Pt2di & aP1,
@@ -225,7 +225,7 @@ cResulRechCorrel<int> TT_RechMaxCorrelBasique
         }
      }
 
-     return cResulRechCorrel<int>(aP2+aDecMax,a2SolMax.x);
+     return cResulRechCorrel(Pt2dr(aP2+aDecMax),a2SolMax.x);
 
 }
 
@@ -322,7 +322,7 @@ class cTT_MaxLocCorrelBasique : public Optim2DParam
          c2Sol               m2Sol;
 };
 
-cResulRechCorrel<int> TT_RechMaxCorrelLocale
+cResulRechCorrel      TT_RechMaxCorrelLocale
                       (
                              const tTImTiepTri & aIm1,
                              const Pt2di & aP1,
@@ -337,23 +337,24 @@ cResulRechCorrel<int> TT_RechMaxCorrelLocale
    cTT_MaxLocCorrelBasique  anOpt(eTMCInt,aIm1,Pt2dr(aP1),aIm2,Pt2dr(aP2),aSzW,aStep,0.9);
    anOpt.optim_step_fixed(Pt2dr(0,0),aSzRechMax);
 
-   return cResulRechCorrel<int>(aP2+round_ni(anOpt.param()),anOpt.m2Sol.ScoreFinal());
+   return cResulRechCorrel(Pt2dr(aP2+round_ni(anOpt.param())),anOpt.m2Sol.ScoreFinal());
 }
 
-cResulRechCorrel<double> TT_RechMaxCorrelMultiScaleBilin
+cResulRechCorrel TT_RechMaxCorrelMultiScaleBilin
                       (
                              const tTImTiepTri & aIm1,
                              const Pt2dr & aP1,
                              const tTImTiepTri & aIm2,
                              const Pt2dr & aP2,
-                             const int   aSzW
+                             const int   aSzW,
+                             double aStepFinal
                       )
 
 {
-   cTT_MaxLocCorrelBasique  anOpt(eTMCBilinStep1,aIm1,aP1,aIm2,aP2,aSzW,1,0.01);
+   cTT_MaxLocCorrelBasique  anOpt(eTMCBilinStep1,aIm1,aP1,aIm2,aP2,aSzW,1,aStepFinal);
    anOpt.optim();
 
-   return cResulRechCorrel<double>(aP2+anOpt.param(),anOpt.m2Sol.ScoreFinal());
+   return cResulRechCorrel(aP2+anOpt.param(),anOpt.m2Sol.ScoreFinal());
 }
 
 
@@ -485,7 +486,7 @@ REAL cTT_MaxLocCorrelDS1R::Op2DParam_ComputeScore(REAL aDx,REAL aDy)
      return  m2Sol.Score4Opt();
 }
 
-cResulRechCorrel<double> TT_MaxLocCorrelDS1R 
+cResulRechCorrel TT_MaxLocCorrelDS1R 
                          ( 
                               tInterpolTiepTri *  anInterpol,
                               cElMap2D *          aMap,
@@ -502,12 +503,12 @@ cResulRechCorrel<double> TT_MaxLocCorrelDS1R
 
    cTT_MaxLocCorrelDS1R anOptim(anInterpol,aMap,aIm1,aPC1,aIm2,aPC2,aSzW,aNbByPix,aStep0,aStepEnd);
 
-   cResulRechCorrel<double> aResult;
+   cResulRechCorrel aResult;
    if (!anOptim.OkIm1()) return aResult;
 
    anOptim.optim();
 
-   return cResulRechCorrel<double>(aPC2+anOptim.param() * aStep0, anOptim.m2Sol.ScoreFinal());
+   return cResulRechCorrel(aPC2+anOptim.param() * aStep0, anOptim.m2Sol.ScoreFinal());
 }
 
 /*Footer-MicMac-eLiSe-25/06/2007

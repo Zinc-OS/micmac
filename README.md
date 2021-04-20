@@ -1,12 +1,22 @@
+MICMAC
+======
+[![Build Status](https://travis-ci.org/micmacIGN/micmac.svg?branch=master)](https://travis-ci.org/micmacIGN/micmac)
+
+[Version française](LISEZMOI.md)
+
 # Prerequisites
 
 Some external tools need to be present on your system for Micmac to run properly :
-- [make](www.gnu.org/software/make) for parallel processes management,
-- *convert*, from [ImageMagick](www.imagemagick.org), for image format conversion,
-- [exiftool](www.sno.phy.queensu.ca/~phil/exiftool) and [exiv2](www.exiv2.org), to read/write image meta-data,
+- [make](http://www.gnu.org/software/make) for parallel processes management,
+- *convert*, from [ImageMagick](http://www.imagemagick.org), for image format conversion,
+- [exiftool](http://www.sno.phy.queensu.ca/~phil/exiftool) and [exiv2](http://www.exiv2.org), to read/write image meta-data,
 - [proj4](http://trac.osgeo.org/proj/) for coordinate system conversion.
 
-You can check before-hand that Micmac is able to find those programs by calling the command :
+On Debian/Ubuntu distribution you can easily install these tools by calling this command:
+
+`sudo apt-get install make imagemagick libimage-exiftool-perl exiv2 proj-bin qt5-default`
+
+You can check before-hand that Micmac is able to find those programs by calling the command:
 
 `bin/mm3d CheckDependencies` (in Micmac directory)
 
@@ -37,9 +47,11 @@ The package of X11 headers is general called `libx11-dev` under Linux distributi
 X11-based tools are not available in the Windows version.
 Windows users may need Qt5 libraries to generate graphical interfaces such as *SaisieMasqQT*.
 
+For recompilation optimization, [ccache](ccache.dev) is automatically used if detected.
+
 ## Compiling process for Linux / MacOS X
 
-- extract source files from the tarball : `tar xvf micmac_source_revXXX.tar.gz`
+- clone the git repository : `git clone https://github.com/micmacIGN/micmac.git`
 - enter 'micmac' directory : `cd micmac`
 - create a directory for the build's intermediate files, then enter it : `mkdir build & cd build`
 - generate makefiles using cmake : `cmake ../`
@@ -51,6 +63,17 @@ The first steps are the same as for a Linux/MacOS build except for the `make` ca
 Instead of makefiles, *Cmake* generates a Visual C++ solution, named `micmac.sln`. Open it and compile the `INSTALL` project. 
 Be sure to be in *Release* configuration, for Micmac is much faster built this way than in *Debug* mode.
 Again, do not compile the entire solution but just the `INSTALL` project, otherwise compiled binaries won't be copied in the `bin` directory and this will prevent Micmac from working.
+
+## Docker image
+A precompiled docker image is available and ready to use:
+
+`docker pull rupnike/micmac`
+
+or build your own image from scratch using the existing Dockerfile:
+
+`docker image build -t micmac:1.0 -f Dockerfile`
+
+[![Docker Status](https://dockeri.co/image/rupnike/micmac)](https://hub.docker.com/r/rupnike/micmac/)
 
 # Installation test
 

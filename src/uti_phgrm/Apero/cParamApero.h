@@ -79,6 +79,7 @@ typedef enum
   eCalibAutomFour19x2,
   eCalibAutomEbner,
   eCalibAutomBrown,
+  eCalibAutomFishEyeStereographique,
   eCalibAutomNone
 } eTypeCalibAutom;
 void xml_init(eTypeCalibAutom & aVal,cElXMLTree * aTree);
@@ -133,6 +134,34 @@ void  BinaryDumpInFile(ELISE_fp &,const eTypeVerif &);
 std::string  Mangling( eTypeVerif *);
 
 void  BinaryUnDumpFromFile(eTypeVerif &,ELISE_fp &);
+
+typedef enum
+{
+  eTRPB_Ok,
+  eTRPB_InsufPoseInit,
+  eTRPB_PdsResNull,
+  eTRPB_NotInMasq3D,
+  eTRPB_BSurH,
+  eTRPB_Behind,
+  eTRPB_VisibIm,
+  eTRPB_OutIm,
+  eTRPB_PbInterBundle,
+  eTRPB_RatioDistP2Cam,
+  eTRPB_Unknown,
+  eTRPB_NbVals
+} eTypeResulPtsBundle;
+void xml_init(eTypeResulPtsBundle & aVal,cElXMLTree * aTree);
+std::string  eToString(const eTypeResulPtsBundle & aVal);
+
+eTypeResulPtsBundle  Str2eTypeResulPtsBundle(const std::string & aName);
+
+cElXMLTree * ToXMLTree(const std::string & aNameTag,const eTypeResulPtsBundle & anObj);
+
+void  BinaryDumpInFile(ELISE_fp &,const eTypeResulPtsBundle &);
+
+std::string  Mangling( eTypeResulPtsBundle *);
+
+void  BinaryUnDumpFromFile(eTypeResulPtsBundle &,ELISE_fp &);
 
 typedef enum
 {
@@ -1664,9 +1693,13 @@ class cGpsOffset
 
         std::string & Id();
         const std::string & Id()const ;
+
+        cTplValGesInit< Pt3dr > & Inc();
+        const cTplValGesInit< Pt3dr > & Inc()const ;
     private:
         Pt3dr mValInit;
         std::string mId;
+        cTplValGesInit< Pt3dr > mInc;
 };
 cElXMLTree * ToXMLTree(const cGpsOffset &);
 
@@ -2060,6 +2093,9 @@ class cMEP_SPEC_MST
         friend void xml_init(cMEP_SPEC_MST & anObj,cElXMLTree * aTree);
 
 
+        cTplValGesInit< std::string > & MSTBlockRigid();
+        const cTplValGesInit< std::string > & MSTBlockRigid()const ;
+
         cTplValGesInit< bool > & Show();
         const cTplValGesInit< bool > & Show()const ;
 
@@ -2078,6 +2114,7 @@ class cMEP_SPEC_MST
         cTplValGesInit< int > & NbInitMinBeforeUnconnect();
         const cTplValGesInit< int > & NbInitMinBeforeUnconnect()const ;
     private:
+        cTplValGesInit< std::string > mMSTBlockRigid;
         cTplValGesInit< bool > mShow;
         cTplValGesInit< int > mMinNbPtsInit;
         cTplValGesInit< double > mExpDist;
@@ -2484,6 +2521,9 @@ class cPosValueInit
         cTplValGesInit< std::string > & PosFromBDOrient();
         const cTplValGesInit< std::string > & PosFromBDOrient()const ;
 
+        cTplValGesInit< std::string > & PosFromBlockRigid();
+        const cTplValGesInit< std::string > & PosFromBlockRigid()const ;
+
         std::string & Id();
         const std::string & Id()const ;
 
@@ -2540,6 +2580,7 @@ class cPosValueInit
     private:
         cTplValGesInit< std::string > mPosId;
         cTplValGesInit< std::string > mPosFromBDOrient;
+        cTplValGesInit< std::string > mPosFromBlockRigid;
         cTplValGesInit< cPosFromBDAppuis > mPosFromBDAppuis;
         cTplValGesInit< cPoseFromLiaisons > mPoseFromLiaisons;
         cTplValGesInit< cPoseInitFromReperePlan > mPoseInitFromReperePlan;
@@ -2605,6 +2646,9 @@ class cPoseCameraInc
         cTplValGesInit< std::string > & FilterConnecBy();
         const cTplValGesInit< std::string > & FilterConnecBy()const ;
 
+        cTplValGesInit< std::string > & MSTBlockRigid();
+        const cTplValGesInit< std::string > & MSTBlockRigid()const ;
+
         cTplValGesInit< bool > & Show();
         const cTplValGesInit< bool > & Show()const ;
 
@@ -2667,6 +2711,9 @@ class cPoseCameraInc
 
         cTplValGesInit< std::string > & PosFromBDOrient();
         const cTplValGesInit< std::string > & PosFromBDOrient()const ;
+
+        cTplValGesInit< std::string > & PosFromBlockRigid();
+        const cTplValGesInit< std::string > & PosFromBlockRigid()const ;
 
         std::string & Id();
         const std::string & Id()const ;
@@ -2973,6 +3020,84 @@ std::string  Mangling( cSectionInconnues *);
 /******************************************************/
 /******************************************************/
 /******************************************************/
+class cRappelPose
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cRappelPose & anObj,cElXMLTree * aTree);
+
+
+        std::string & IdOrient();
+        const std::string & IdOrient()const ;
+
+        double & SigmaC();
+        const double & SigmaC()const ;
+
+        double & SigmaR();
+        const double & SigmaR()const ;
+
+        cElRegex_Ptr & PatternApply();
+        const cElRegex_Ptr & PatternApply()const ;
+    private:
+        std::string mIdOrient;
+        double mSigmaC;
+        double mSigmaR;
+        cElRegex_Ptr mPatternApply;
+};
+cElXMLTree * ToXMLTree(const cRappelPose &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cRappelPose &);
+
+void  BinaryUnDumpFromFile(cRappelPose &,ELISE_fp &);
+
+std::string  Mangling( cRappelPose *);
+
+class cUseExportImageResidu
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cUseExportImageResidu & anObj,cElXMLTree * aTree);
+
+
+        cTplValGesInit< double > & SzByPair();
+        const cTplValGesInit< double > & SzByPair()const ;
+
+        cTplValGesInit< double > & SzByPose();
+        const cTplValGesInit< double > & SzByPose()const ;
+
+        cTplValGesInit< double > & SzByCam();
+        const cTplValGesInit< double > & SzByCam()const ;
+
+        cTplValGesInit< double > & NbMesByCase();
+        const cTplValGesInit< double > & NbMesByCase()const ;
+
+        std::string & AeroExport();
+        const std::string & AeroExport()const ;
+
+        cTplValGesInit< bool > & GeneratePly();
+        const cTplValGesInit< bool > & GeneratePly()const ;
+
+        cTplValGesInit< int > & SzOrtho();
+        const cTplValGesInit< int > & SzOrtho()const ;
+    private:
+        cTplValGesInit< double > mSzByPair;
+        cTplValGesInit< double > mSzByPose;
+        cTplValGesInit< double > mSzByCam;
+        cTplValGesInit< double > mNbMesByCase;
+        std::string mAeroExport;
+        cTplValGesInit< bool > mGeneratePly;
+        cTplValGesInit< int > mSzOrtho;
+};
+cElXMLTree * ToXMLTree(const cUseExportImageResidu &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cUseExportImageResidu &);
+
+void  BinaryUnDumpFromFile(cUseExportImageResidu &,ELISE_fp &);
+
+std::string  Mangling( cUseExportImageResidu *);
+
 class cTimeLinkage
 {
     public:
@@ -3001,6 +3126,57 @@ class cSectionChantier
 
         friend void xml_init(cSectionChantier & anObj,cElXMLTree * aTree);
 
+
+        std::string & IdOrient();
+        const std::string & IdOrient()const ;
+
+        double & SigmaC();
+        const double & SigmaC()const ;
+
+        double & SigmaR();
+        const double & SigmaR()const ;
+
+        cElRegex_Ptr & PatternApply();
+        const cElRegex_Ptr & PatternApply()const ;
+
+        cTplValGesInit< cRappelPose > & RappelPose();
+        const cTplValGesInit< cRappelPose > & RappelPose()const ;
+
+        cTplValGesInit< int > & NumAttrPdsNewF();
+        const cTplValGesInit< int > & NumAttrPdsNewF()const ;
+
+        cTplValGesInit< double > & RatioMaxDistCS();
+        const cTplValGesInit< double > & RatioMaxDistCS()const ;
+
+        cTplValGesInit< std::string > & DebugVecElimTieP();
+        const cTplValGesInit< std::string > & DebugVecElimTieP()const ;
+
+        cTplValGesInit< int > & DoStatElimBundle();
+        const cTplValGesInit< int > & DoStatElimBundle()const ;
+
+        cTplValGesInit< double > & SzByPair();
+        const cTplValGesInit< double > & SzByPair()const ;
+
+        cTplValGesInit< double > & SzByPose();
+        const cTplValGesInit< double > & SzByPose()const ;
+
+        cTplValGesInit< double > & SzByCam();
+        const cTplValGesInit< double > & SzByCam()const ;
+
+        cTplValGesInit< double > & NbMesByCase();
+        const cTplValGesInit< double > & NbMesByCase()const ;
+
+        std::string & AeroExport();
+        const std::string & AeroExport()const ;
+
+        cTplValGesInit< bool > & GeneratePly();
+        const cTplValGesInit< bool > & GeneratePly()const ;
+
+        cTplValGesInit< int > & SzOrtho();
+        const cTplValGesInit< int > & SzOrtho()const ;
+
+        cTplValGesInit< cUseExportImageResidu > & UseExportImageResidu();
+        const cTplValGesInit< cUseExportImageResidu > & UseExportImageResidu()const ;
 
         cTplValGesInit< bool > & UseRegulDist();
         const cTplValGesInit< bool > & UseRegulDist()const ;
@@ -3070,7 +3246,16 @@ class cSectionChantier
 
         cTplValGesInit< double > & ThresholdWarnPointsBehind();
         const cTplValGesInit< double > & ThresholdWarnPointsBehind()const ;
+
+        cTplValGesInit< bool > & ExportMatrixMarket();
+        const cTplValGesInit< bool > & ExportMatrixMarket()const ;
     private:
+        cTplValGesInit< cRappelPose > mRappelPose;
+        cTplValGesInit< int > mNumAttrPdsNewF;
+        cTplValGesInit< double > mRatioMaxDistCS;
+        cTplValGesInit< std::string > mDebugVecElimTieP;
+        cTplValGesInit< int > mDoStatElimBundle;
+        cTplValGesInit< cUseExportImageResidu > mUseExportImageResidu;
         cTplValGesInit< bool > mUseRegulDist;
         cTplValGesInit< bool > mGBCamSupresStenCam;
         cTplValGesInit< bool > mStenCamSupresGBCam;
@@ -3093,6 +3278,7 @@ class cSectionChantier
         cTplValGesInit< std::string > mSauvAutom;
         cTplValGesInit< bool > mSauvAutomBasic;
         cTplValGesInit< double > mThresholdWarnPointsBehind;
+        cTplValGesInit< bool > mExportMatrixMarket;
 };
 cElXMLTree * ToXMLTree(const cSectionChantier &);
 
@@ -3434,6 +3620,9 @@ class cBasculeOnPoints
         friend void xml_init(cBasculeOnPoints & anObj,cElXMLTree * aTree);
 
 
+        cTplValGesInit< std::string > & ForceSol();
+        const cTplValGesInit< std::string > & ForceSol()const ;
+
         cTplValGesInit< std::string > & PoseCentrale();
         const cTplValGesInit< std::string > & PoseCentrale()const ;
 
@@ -3458,6 +3647,7 @@ class cBasculeOnPoints
         cTplValGesInit< std::string > & NameExport();
         const cTplValGesInit< std::string > & NameExport()const ;
     private:
+        cTplValGesInit< std::string > mForceSol;
         cTplValGesInit< cBascOnCentre > mBascOnCentre;
         cTplValGesInit< cBascOnAppuis > mBascOnAppuis;
         cTplValGesInit< bool > mModeL2;
@@ -3543,6 +3733,9 @@ class cModeBascule
         friend void xml_init(cModeBascule & anObj,cElXMLTree * aTree);
 
 
+        cTplValGesInit< std::string > & ForceSol();
+        const cTplValGesInit< std::string > & ForceSol()const ;
+
         cTplValGesInit< std::string > & PoseCentrale();
         const cTplValGesInit< std::string > & PoseCentrale()const ;
 
@@ -3616,6 +3809,15 @@ class cBasculeOrientation
         cTplValGesInit< std::string > & PatternNameEstim();
         const cTplValGesInit< std::string > & PatternNameEstim()const ;
 
+        cTplValGesInit< std::string > & FileExportDir();
+        const cTplValGesInit< std::string > & FileExportDir()const ;
+
+        cTplValGesInit< std::string > & FileExportInv();
+        const cTplValGesInit< std::string > & FileExportInv()const ;
+
+        cTplValGesInit< std::string > & ForceSol();
+        const cTplValGesInit< std::string > & ForceSol()const ;
+
         cTplValGesInit< std::string > & PoseCentrale();
         const cTplValGesInit< std::string > & PoseCentrale()const ;
 
@@ -3667,6 +3869,8 @@ class cBasculeOrientation
         cTplValGesInit< bool > mAfterCompens;
         cTplValGesInit< std::string > mPatternNameApply;
         cTplValGesInit< std::string > mPatternNameEstim;
+        cTplValGesInit< std::string > mFileExportDir;
+        cTplValGesInit< std::string > mFileExportInv;
         cModeBascule mModeBascule;
 };
 cElXMLTree * ToXMLTree(const cBasculeOrientation &);
@@ -4436,6 +4640,15 @@ class cIterationsCompensation
         cTplValGesInit< std::string > & PatternNameEstim();
         const cTplValGesInit< std::string > & PatternNameEstim()const ;
 
+        cTplValGesInit< std::string > & FileExportDir();
+        const cTplValGesInit< std::string > & FileExportDir()const ;
+
+        cTplValGesInit< std::string > & FileExportInv();
+        const cTplValGesInit< std::string > & FileExportInv()const ;
+
+        cTplValGesInit< std::string > & ForceSol();
+        const cTplValGesInit< std::string > & ForceSol()const ;
+
         cTplValGesInit< std::string > & PoseCentrale();
         const cTplValGesInit< std::string > & PoseCentrale()const ;
 
@@ -4999,6 +5212,9 @@ class cRappelOnZ
         friend void xml_init(cRappelOnZ & anObj,cElXMLTree * aTree);
 
 
+        cTplValGesInit< std::string > & KeyGrpApply();
+        const cTplValGesInit< std::string > & KeyGrpApply()const ;
+
         double & Z();
         const double & Z()const ;
 
@@ -5014,6 +5230,7 @@ class cRappelOnZ
         cTplValGesInit< std::string > & LayerMasq();
         const cTplValGesInit< std::string > & LayerMasq()const ;
     private:
+        cTplValGesInit< std::string > mKeyGrpApply;
         double mZ;
         double mIncC;
         cTplValGesInit< double > mIncE;
@@ -5044,6 +5261,9 @@ class cObsLiaisons
 
         cTplValGesInit< cPonderationPackMesure > & PondSurf();
         const cTplValGesInit< cPonderationPackMesure > & PondSurf()const ;
+
+        cTplValGesInit< std::string > & KeyGrpApply();
+        const cTplValGesInit< std::string > & KeyGrpApply()const ;
 
         double & Z();
         const double & Z()const ;
@@ -5797,12 +6017,16 @@ class cExportPtsFlottant
         cTplValGesInit< std::string > & NameFileTxt();
         const cTplValGesInit< std::string > & NameFileTxt()const ;
 
+        cTplValGesInit< std::string > & NameFileJSON();
+        const cTplValGesInit< std::string > & NameFileJSON()const ;
+
         cTplValGesInit< std::string > & TextComplTxt();
         const cTplValGesInit< std::string > & TextComplTxt()const ;
     private:
         cTplValGesInit< std::string > mPatternSel;
         cTplValGesInit< std::string > mNameFileXml;
         cTplValGesInit< std::string > mNameFileTxt;
+        cTplValGesInit< std::string > mNameFileJSON;
         cTplValGesInit< std::string > mTextComplTxt;
 };
 cElXMLTree * ToXMLTree(const cExportPtsFlottant &);
@@ -6129,6 +6353,9 @@ class cExportNuage
         cTplValGesInit< bool > & PlyModeBin();
         const cTplValGesInit< bool > & PlyModeBin()const ;
 
+        cTplValGesInit< bool > & SavePtsCol();
+        const cTplValGesInit< bool > & SavePtsCol()const ;
+
         std::list< std::string > & NameRefLiaison();
         const std::list< std::string > & NameRefLiaison()const ;
 
@@ -6212,10 +6439,14 @@ class cExportNuage
 
         cTplValGesInit< cNuagePutGCPCtrl > & NuagePutGCPCtrl();
         const cTplValGesInit< cNuagePutGCPCtrl > & NuagePutGCPCtrl()const ;
+
+        cTplValGesInit< int > & NormByC();
+        const cTplValGesInit< int > & NormByC()const ;
     private:
         std::string mNameOut;
         cTplValGesInit< cExportNuageByImage > mExportNuageByImage;
         cTplValGesInit< bool > mPlyModeBin;
+        cTplValGesInit< bool > mSavePtsCol;
         std::list< std::string > mNameRefLiaison;
         cTplValGesInit< std::string > mPatternSel;
         cPonderationPackMesure mPond;
@@ -6228,6 +6459,7 @@ class cExportNuage
         cTplValGesInit< cNuagePutCam > mNuagePutCam;
         cTplValGesInit< cNuagePutInterPMul > mNuagePutInterPMul;
         cTplValGesInit< cNuagePutGCPCtrl > mNuagePutGCPCtrl;
+        cTplValGesInit< int > mNormByC;
 };
 cElXMLTree * ToXMLTree(const cExportNuage &);
 
@@ -6939,6 +7171,57 @@ class cParamApero
         cSectionInconnues & SectionInconnues();
         const cSectionInconnues & SectionInconnues()const ;
 
+        std::string & IdOrient();
+        const std::string & IdOrient()const ;
+
+        double & SigmaC();
+        const double & SigmaC()const ;
+
+        double & SigmaR();
+        const double & SigmaR()const ;
+
+        cElRegex_Ptr & PatternApply();
+        const cElRegex_Ptr & PatternApply()const ;
+
+        cTplValGesInit< cRappelPose > & RappelPose();
+        const cTplValGesInit< cRappelPose > & RappelPose()const ;
+
+        cTplValGesInit< int > & NumAttrPdsNewF();
+        const cTplValGesInit< int > & NumAttrPdsNewF()const ;
+
+        cTplValGesInit< double > & RatioMaxDistCS();
+        const cTplValGesInit< double > & RatioMaxDistCS()const ;
+
+        cTplValGesInit< std::string > & DebugVecElimTieP();
+        const cTplValGesInit< std::string > & DebugVecElimTieP()const ;
+
+        cTplValGesInit< int > & DoStatElimBundle();
+        const cTplValGesInit< int > & DoStatElimBundle()const ;
+
+        cTplValGesInit< double > & SzByPair();
+        const cTplValGesInit< double > & SzByPair()const ;
+
+        cTplValGesInit< double > & SzByPose();
+        const cTplValGesInit< double > & SzByPose()const ;
+
+        cTplValGesInit< double > & SzByCam();
+        const cTplValGesInit< double > & SzByCam()const ;
+
+        cTplValGesInit< double > & NbMesByCase();
+        const cTplValGesInit< double > & NbMesByCase()const ;
+
+        std::string & AeroExport();
+        const std::string & AeroExport()const ;
+
+        cTplValGesInit< bool > & GeneratePly();
+        const cTplValGesInit< bool > & GeneratePly()const ;
+
+        cTplValGesInit< int > & SzOrtho();
+        const cTplValGesInit< int > & SzOrtho()const ;
+
+        cTplValGesInit< cUseExportImageResidu > & UseExportImageResidu();
+        const cTplValGesInit< cUseExportImageResidu > & UseExportImageResidu()const ;
+
         cTplValGesInit< bool > & UseRegulDist();
         const cTplValGesInit< bool > & UseRegulDist()const ;
 
@@ -7007,6 +7290,9 @@ class cParamApero
 
         cTplValGesInit< double > & ThresholdWarnPointsBehind();
         const cTplValGesInit< double > & ThresholdWarnPointsBehind()const ;
+
+        cTplValGesInit< bool > & ExportMatrixMarket();
+        const cTplValGesInit< bool > & ExportMatrixMarket()const ;
 
         cSectionChantier & SectionChantier();
         const cSectionChantier & SectionChantier()const ;
@@ -7189,6 +7475,42 @@ std::string  Mangling( cXmlSauvExportAperoOneAppuis *);
 /******************************************************/
 /******************************************************/
 /******************************************************/
+class cXmlSauvExportAperoOneMult
+{
+    public:
+        cGlobXmlGen mGXml;
+
+        friend void xml_init(cXmlSauvExportAperoOneMult & anObj,cElXMLTree * aTree);
+
+
+        int & Multiplicity();
+        const int & Multiplicity()const ;
+
+        double & Residual();
+        const double & Residual()const ;
+
+        int & NbPts();
+        const int & NbPts()const ;
+
+        double & PercOk();
+        const double & PercOk()const ;
+    private:
+        int mMultiplicity;
+        double mResidual;
+        int mNbPts;
+        double mPercOk;
+};
+cElXMLTree * ToXMLTree(const cXmlSauvExportAperoOneMult &);
+
+void  BinaryDumpInFile(ELISE_fp &,const cXmlSauvExportAperoOneMult &);
+
+void  BinaryUnDumpFromFile(cXmlSauvExportAperoOneMult &,ELISE_fp &);
+
+std::string  Mangling( cXmlSauvExportAperoOneMult *);
+
+/******************************************************/
+/******************************************************/
+/******************************************************/
 class cXmlSauvExportAperoOneIter
 {
     public:
@@ -7202,6 +7524,9 @@ class cXmlSauvExportAperoOneIter
 
         std::list< cXmlSauvExportAperoOneIm > & OneIm();
         const std::list< cXmlSauvExportAperoOneIm > & OneIm()const ;
+
+        std::list< cXmlSauvExportAperoOneMult > & OneMult();
+        const std::list< cXmlSauvExportAperoOneMult > & OneMult()const ;
 
         double & AverageResidual();
         const double & AverageResidual()const ;
@@ -7217,14 +7542,23 @@ class cXmlSauvExportAperoOneIter
 
         cTplValGesInit< double > & EvolMoy();
         const cTplValGesInit< double > & EvolMoy()const ;
+
+        cTplValGesInit< std::string > & ImWorstRes();
+        const cTplValGesInit< std::string > & ImWorstRes()const ;
+
+        cTplValGesInit< double > & WorstRes();
+        const cTplValGesInit< double > & WorstRes()const ;
     private:
         std::list< cXmlSauvExportAperoOneAppuis > mOneAppui;
         std::list< cXmlSauvExportAperoOneIm > mOneIm;
+        std::list< cXmlSauvExportAperoOneMult > mOneMult;
         double mAverageResidual;
         int mNumIter;
         int mNumEtape;
         cTplValGesInit< double > mEvolMax;
         cTplValGesInit< double > mEvolMoy;
+        cTplValGesInit< std::string > mImWorstRes;
+        cTplValGesInit< double > mWorstRes;
 };
 cElXMLTree * ToXMLTree(const cXmlSauvExportAperoOneIter &);
 

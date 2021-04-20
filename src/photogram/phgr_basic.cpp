@@ -44,6 +44,7 @@ Header-MicMac-eLiSe-25/06/2007*/
 #include "StdAfx.h"
 #include "../src/uti_phgrm/Apero/cCameraRPC.h"
 
+extern bool ERupnik_MM();
 
 bool DebugOFPA = false;
 int aCPTOkOFA = 0;
@@ -555,6 +556,7 @@ void ElPackHomologue::PrivDirEpipolaire(Pt2dr & aRes1,Pt2dr & aRes2,INT aSz) con
 
     for (INT aK1=0 ; aK1<aSz ; aK1++)
     {
+        std::cout << "PrivDirEpipolaire Phase1, remain " << (aSz-aK1) << "\n";
         for (INT aK2=0 ; aK2<aSz ; aK2++)
         {
              REAL alpha1 = (aK1 + 0.5)* 3.14 /aSz;
@@ -583,17 +585,20 @@ void ElPackHomologue::PrivDirEpipolaire(Pt2dr & aRes1,Pt2dr & aRes2,INT aSz) con
         }
     }
     {
-    for (INT aK1=0 ; aK1<aSz ; aK1++)
-        for (INT aK2=0 ; aK2<aSz ; aK2++)
+        for (INT aK1=0 ; aK1<aSz ; aK1++)
         {
-             REAL ecart;
-             ELISE_COPY
-             (
-                 aScore.all_pts(),
-                 aScore.in()*(1-ecart_frac((aK1-FX)/REAL(aSz))-ecart_frac((aK2-FY)/REAL(aSz))),
-                 sigma(ecart)
-             );
-              aScoreMoy.data()[aK2][aK1] = ecart;
+            std::cout << "PrivDirEpipolaire Phase1, remain " << (aSz-aK1) << "\n";
+            for (INT aK2=0 ; aK2<aSz ; aK2++)
+            {
+                 REAL ecart;
+                 ELISE_COPY
+                 (
+                     aScore.all_pts(),
+                     aScore.in()*(1-ecart_frac((aK1-FX)/REAL(aSz))-ecart_frac((aK2-FY)/REAL(aSz))),
+                     sigma(ecart)
+                 );
+                  aScoreMoy.data()[aK2][aK1] = ecart;
+            }
         }
     }
 
@@ -665,6 +670,16 @@ void ElPackHomologue::InvY(Pt2dr aSzIm1,Pt2dr aSzIm2)
          itCPl->P2().y = aSzIm2.y-itCPl->P2().y;
      }
 }
+
+void ElPackHomologue::Resize(double aRatioIm1,double aRatioIm2)
+{
+    for (tCont::iterator itCPl=begin() ; itCPl!=end() ; itCPl++)
+    {
+         itCPl->P1() = itCPl->P1()*aRatioIm1 ;
+         itCPl->P2() = itCPl->P2()*aRatioIm2;
+     }
+}
+
 
 const ElCplePtsHomologues * ElPackHomologue::Cple_Nearest(Pt2dr aP,bool P1) const
 {
@@ -801,8 +816,17 @@ ElPackHomologue ElPackHomologue::FromFile(const std::string & aName)
                 if ( aFTxt.fgets( aBuf, End ) ) //if (aFTxt.fgets(aBuf,200,End)) TEST_OVERFLOW
                 {
                    Pt2dr aP1,aP2;
+                   double aPds=1.0;
+                   int aNb = sscanf(aBuf.c_str(),"%lf %lf %lf %lf %lf",&aP1.x,&aP1.y,&aP2.x,&aP2.y,&aPds);
+
+                   if ((aNb==4) || (aNb==5))
+                   {
+                        aPck.Cple_Add(ElCplePtsHomologues(aP1,aP2,aPds));
+                   }
+               /*
                    if (sscanf(aBuf.c_str(),"%lf %lf %lf %lf",&aP1.x,&aP1.y,&aP2.x,&aP2.y)==4) //sscanf(aBuf.c_str(),"%lf %lf %lf %lf",&aP1.x,&aP1.y,&aP2.x,&aP2.y); TEST_OVERFLOW
                      aPck.Cple_Add(ElCplePtsHomologues(aP1,aP2,1.0));
+*/
                 }
             }
 
@@ -881,7 +905,7 @@ void ElPackHomologue::StdPutInFile(const std::string & aName) const
            itP++
        )
        {
-           fprintf(aFP,"%f %f %f %f\n",itP->P1().x,itP->P1().y,itP->P2().x,itP->P2().y);
+           fprintf(aFP,"%f %f %f %f %f\n",itP->P1().x,itP->P1().y,itP->P2().x,itP->P2().y,itP->Pds());
        }
        ElFclose(aFP);
 /*
@@ -1706,7 +1730,7 @@ bool cBasicGeomCap3D::AltisSolMinMaxIsDef() const
     return false;
 }
 
-double  cBasicGeomCap3D::EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D & aCam2,const Pt2dr & aP2) const
+double  cBasicGeomCap3D::EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D & aCam2,const Pt2dr & aP2,Pt2dr * aSauvDir) const
 {
     const cBasicGeomCap3D & aCam1 = *this;
 
@@ -1723,6 +1747,8 @@ double  cBasicGeomCap3D::EpipolarEcart(const Pt2dr & aP1,const cBasicGeomCap3D &
     Pt2dr aQB = aCam1.Ter2Capteur(aPI2);
 
     Pt2dr aDirEpi = vunit(aQB-aQA);
+
+    if (aSauvDir) *aSauvDir = aDirEpi;
 
     Pt2dr aDif = (aP1- aQA) / aDirEpi;
     return aDif.y;
@@ -1753,7 +1779,7 @@ void AutoDetermineTypeTIGB(eTypeImporGenBundle & aType,const std::string & aName
                     if (aStrMETADATA_FORMAT == "DIMAP")
                     {
                         std::string aStrVersion = aXmlMETADATA_FORMAT->ValAttr("version","-1");
-                        if (aStrVersion =="2.0")
+                        if ((aStrVersion =="2.0") || (aStrVersion =="2.12") || (aStrVersion =="2.15"))
                         {
                              //std::cout << "GOT DIMAP2 \n"; getchar();
                             aType = eTIGB_MMDimap2;
@@ -1771,6 +1797,12 @@ void AutoDetermineTypeTIGB(eTypeImporGenBundle & aType,const std::string & aName
                                     return;
                                 }
                             }
+                            else
+                            {
+                                ELISE_ASSERT(false,"AutoDetermineTypeTIGB; A new DIMAP version? We only know versions 2.0, 2.12 and 2.15. Contact developpers for help."); 
+                                
+                            }
+                            
                         }
                     }
                 }
@@ -1795,6 +1827,20 @@ void AutoDetermineTypeTIGB(eTypeImporGenBundle & aType,const std::string & aName
                     aType = eTIGB_MMDGlobe;
                     return;
                 }
+                
+                //Xml_ScanLineSensor
+                if (aTree->Get("Xml_ScanLineSensor") !=0)
+                {
+                    aType = eTIGB_MMScanLineSensor;
+                    return;
+                }
+				//MMEpip
+				if (aTree->Get("ListeAppuis1Im") !=0)
+				{
+					aType = eTIGB_MMEpip;
+					return;
+				}
+
            }
            else
            {
@@ -1870,7 +1916,9 @@ cBasicGeomCap3D * cBasicGeomCap3D::StdGetFromFile(const std::string & aName,int 
              aType==eTIGB_MMDGlobe || 
              aType==eTIGB_MMEuclid || 
              aType==eTIGB_MMIkonos || 
-             aType==eTIGB_MMOriGrille )
+             aType==eTIGB_MMOriGrille ||
+             aType==eTIGB_MMScanLineSensor ||
+		     aType==eTIGB_MMEpip	)
     {
 	
 	return CameraRPC::CamRPCOrientGenFromFile(aName, aType, aChSys);
@@ -1886,7 +1934,9 @@ cBasicGeomCap3D * cBasicGeomCap3D::StdGetFromFile(const std::string & aName,int 
 
          std::string aNameType = ThePattSatelit.KIemeExprPar(1);
     
-	 eTypeImporGenBundle aTrueType = Str2eTypeImporGenBundle(aNameType);
+	 eTypeImporGenBundle aTrueType = eTIGB_Unknown;
+	 AutoDetermineTypeTIGB(aTrueType,aName);//ER modif to look inside the file rather than reason from the filename: eTypeImporGenBundle aTrueType = Str2eTypeImporGenBundle(aNameType);
+
          aIntType =  aTrueType;
 
          switch (aTrueType)
@@ -1896,6 +1946,8 @@ cBasicGeomCap3D * cBasicGeomCap3D::StdGetFromFile(const std::string & aName,int 
                 case eTIGB_MMEuclid :
                 case eTIGB_MMIkonos :
                 case eTIGB_MMOriGrille :
+                case eTIGB_MMScanLineSensor :
+				case eTIGB_MMEpip :
                       return  CameraRPC::CamRPCOrientGenFromFile(aName,aTrueType,aChSys);
 
                 default : ;
@@ -2080,9 +2132,9 @@ cArgOptionalPIsVisibleInImage::cArgOptionalPIsVisibleInImage() :
 }
 
 
-bool    ElCamera::PIsVisibleInImage   (const Pt3dr & aPTer,const cArgOptionalPIsVisibleInImage * anArg) const
+bool    ElCamera::PIsVisibleInImage   (const Pt3dr & aPTer,cArgOptionalPIsVisibleInImage * anArg) const
 {
-
+   if (anArg) anArg->mWhy ="";
 
    Pt3dr aPCam = R3toL3(aPTer);
 
@@ -2093,7 +2145,10 @@ bool    ElCamera::PIsVisibleInImage   (const Pt3dr & aPTer,const cArgOptionalPIs
         if (aPCam.z <= aSeuil)
         {
              if ( (anArg==0) || (! anArg->mOkBehind)  || (aPCam.z>-aSeuil))
+             {
+                if (anArg) anArg->mWhy = "Behind";
                 return false;
+             }
         }
    }
 
@@ -2124,6 +2179,7 @@ bool    ElCamera::PIsVisibleInImage   (const Pt3dr & aPTer,const cArgOptionalPIs
        aPQ =  aMil+ (aPQ-aMil) * aRab;
        if ((aPQ.x <0)  || (aPQ.y<0) || (aPQ.x>aSz.x) || (aPQ.y>aSz.y))
        {
+            if (anArg) anArg->mWhy ="PreCondOut";
             return false;
        }
     }
@@ -2136,20 +2192,36 @@ bool    ElCamera::PIsVisibleInImage   (const Pt3dr & aPTer,const cArgOptionalPIs
    // Si "vraie" camera et scannee il est necessaire de faire le test maintenant
    // car IsZoneUtil est en mm
 
-   if ( (!GetZoneUtilInPixel()) && ( ! IsInZoneUtile(aPF0))) return false;
+   if ( (!GetZoneUtilInPixel()) && ( ! IsInZoneUtile(aPF0)))
+   {
+       if (anArg) anArg->mWhy ="ScanedOut";
+       return false;
+   }
 
 
    Pt2dr aPF1 = DComplM2C(aPF0);
 
    // MPD le 17/06/2014 : je ne comprend plus le [1], qui fait planter les camera ortho
    // a priori la zone utile se juge a la fin
-   if (GetZoneUtilInPixel() && ( ! IsInZoneUtile(aPF1,true))) return false;
+   if (GetZoneUtilInPixel() && ( ! IsInZoneUtile(aPF1,true))) 
+   {
+       if (anArg) anArg->mWhy ="NotInImage";
+       return false;
+   }
 
 
    Pt2dr aI0Again = DistInverse(aPF1);
 
 
-    return euclid(aPI0-aI0Again) < 1.0/ mScaleAfnt;
+   bool aResult = (euclid(aPI0-aI0Again) < 1.0/ mScaleAfnt);
+
+   if (! aResult)
+   {
+       if (anArg) anArg->mWhy ="DistCheck";
+       return false;
+   }
+
+   return aResult;
 }
 
 
@@ -2178,7 +2250,8 @@ Pt2di    ElCamera::SzBasicCapt3D() const
 
 bool  ElCamera::CaptHasData(const Pt2dr & aP) const
 {
-   return  IsInZoneUtile(DComplC2M(aP));
+   return  IsInZoneUtile(DComplC2M(aP,false));
+   // return  IsInZoneUtile(DComplC2M(aP));
    // return  IsInZoneUtile(aP);
 }
 
@@ -2289,7 +2362,7 @@ bool ElCamera::IsInZoneUtile(const Pt2dr & aQ,bool Pixel) const
 {
    
    // Pt2dr aP = mZoneUtilInPixel ? DComplM2C(aQ) : aQ;
-    Pt2dr aP = aQ;
+   Pt2dr aP = aQ;
    Pt2di aSz = Pixel ?  Pt2di(SzPixel()) : Sz() ;
    if ((aP.x<=0)  || (aP.y<=0) || (aP.x>=aSz.x) || (aP.y>=aSz.y))
       return false;
@@ -2760,7 +2833,7 @@ const std::vector<bool> & ElCamera::DistComplIsDir() const
 }
 
 
-Pt2dr ElCamera::DComplC2M(Pt2dr aP) const
+Pt2dr ElCamera::DComplC2M(Pt2dr aP,bool UseTrScN) const
 {
 
    aP = mGlobOrImaC2M(aP);
@@ -2773,12 +2846,16 @@ Pt2dr ElCamera::DComplC2M(Pt2dr aP) const
          mDistCompl[aK]->Inverse(aP) :
          mDistCompl[aK]->Direct(aP)  ;
    }
-   Pt2dr aRes
-          (
+
+   if (UseTrScN)
+   {
+      aP = Pt2dr
+           (
                (aP.x-mTrN.x)/mScN,
                (aP.y-mTrN.y)/mScN
-          );
-   return aRes;
+           );
+   }
+   return aP;
 }
 Pt2dr ElCamera::NormC2M(Pt2dr aP) const
 {
@@ -2827,6 +2904,20 @@ void ElCamera::SetOrientation(const ElRotation3D &ORIENT)
 {
 
      _orient = ORIENT;
+}
+
+void ElCamera::AddToCenterOptical(const Pt3dr & aOffsetC)
+{
+    Pt3dr aC = _orient.inv().ImAff(Pt3dr(0,0,0)) + aOffsetC;
+    ElRotation3D aOrient(aC,_orient.inv().Mat(),true);
+    _orient = aOrient.inv();
+}
+
+void ElCamera::MultiToRotation(const ElMatrix<double> & aOffsetR)
+{
+    Pt3dr aC = _orient.inv().ImAff(Pt3dr(0,0,0));
+    ElRotation3D aOrient(aC,aOffsetR.transpose()*_orient.inv().Mat(),true);
+    _orient = aOrient.inv();
 }
 
 Pt2dr ElCamera::R3toC2(Pt3dr p) const
@@ -2935,6 +3026,7 @@ ElPackHomologue  ElCamera::F2toPtDirRayonL3(const ElPackHomologue & aPckIn,ElCam
    {
       if ( (! OkPt(itP->P1(),aSz1))  || (! OkPt(itP->P2(),aSz2)))
       {
+// MPD => il semble que SIFT genere des points 
           std::cout << "IM1 , P : " << itP->P1() << aSz1 << "\n";
           std::cout << "IM2 , P : " << itP->P2() << aSz2 << "\n";
           ELISE_ASSERT
@@ -2943,15 +3035,18 @@ ElPackHomologue  ElCamera::F2toPtDirRayonL3(const ElPackHomologue & aPckIn,ElCam
              "Pt Out Cam in ElCamera::F2toPtDirRayonL3"
           );
       }
-      if (
-                IsInZoneUtile(itP->P1())
-             && aCam2->IsInZoneUtile(itP->P2())
-         )
-      {
-          aPckOut.Cple_Add(F2toPtDirRayonL3(itP->ToCple(),aCam2));
-      }
       else
       {
+           if (
+                     IsInZoneUtile(itP->P1())
+                  && aCam2->IsInZoneUtile(itP->P2())
+              )
+           {
+               aPckOut.Cple_Add(F2toPtDirRayonL3(itP->ToCple(),aCam2));
+           }
+           else
+           {
+           }
       }
    }
 
@@ -3414,9 +3509,15 @@ cOrientationConique  ElCamera::StdExportCalibGlob() const
    return StdExportCalibGlob(true);
 }
 
-std::string  ElCamera::StdExport2File(cInterfChantierNameManipulateur *anICNM,const std::string & aDirOri,const std::string & aNameIm)
+std::string  ElCamera::StdExport2File(cInterfChantierNameManipulateur *anICNM,const std::string & aDirOri,const std::string & aNameIm,const std::string & aNameFileInterne)
 {
+   bool FileInterne = (aNameFileInterne != "");
    cOrientationConique  anOC = StdExportCalibGlob() ;
+   if (FileInterne)
+   {
+      anOC.Interne().SetNoInit();
+      anOC.FileInterne().SetVal(aNameFileInterne);
+   }
    std::string aName = anICNM->NameOriStenope(aDirOri,aNameIm);
    MakeFileXML(anOC,aName);
    return aName;
@@ -3929,6 +4030,15 @@ void CamStenope::CoinsProjZ(Pt3dr &aP1,Pt3dr &aP2,Pt3dr &aP3,Pt3dr &aP4, double 
     aP3 = ImEtZ2Terrain(Pt2dr(0.f,Sz().y),aZ);    // BAS GAUCHE
     aP4 = ImEtZ2Terrain(Pt2dr(Sz().x,Sz().y),aZ); // BAS DROIT
 }
+// return ground box
+Box2dr CamStenope::BoxTer(double aZ) const
+{
+    Pt3dr aP1,aP2,aP3,aP4;
+    CoinsProjZ(aP1,aP2,aP3,aP4,aZ);
+    Pt2dr aPMin = Pt2dr(ElMin(aP1.x,ElMin(aP2.x,ElMin(aP3.x,aP4.x))),ElMin(aP1.y,ElMin(aP2.y,ElMin(aP3.y,aP4.y))));
+    Pt2dr aPMax = Pt2dr(ElMax(aP1.x,ElMax(aP2.x,ElMax(aP3.x,aP4.x))),ElMax(aP1.y,ElMax(aP2.y,ElMax(aP3.y,aP4.y))));
+    return Box2dr(aPMin,aPMax);
+}
 
 void ElCamera::SetSzPixel(const Pt2dr & aSzP)
 {
@@ -4123,6 +4233,8 @@ CamStenope * CamStenope::StdCamFromFile
                      cInterfChantierNameManipulateur * anICNM
              )
 {
+  if ( ERupnik_MM() ) // NIKRUP
+     std::cout << "NAME StdCamFromFile " << aName << "\n";
 
   return Gen_Cam_Gen_From_File(CanUseGr,aName,"OrientationConique",anICNM)->CS();
 }
@@ -4519,14 +4631,14 @@ ElRotation3D  CamStenope::CombinatoireOFPAGen
      ElRotation3D aRes(Pt3dr(0,0,0),0,0,0);
      * Res_Dmin = 1e8;
 
-#if (ELISE_unix || ELISE_MacOs || ELISE_MinGW)
+// #if (ELISE_unix || ELISE_MacOs || ELISE_MinGW)
      std::vector < Pt3dr > V3( PR3.begin() , PR3.end() );
      std::vector < Pt2dr > V2( PF2.begin() , PF2.end() );
-#else
-     ELISE_ASSERT(false,"No Vector interval init, with Visual");
-     std::vector < Pt3dr > V3;
-     std::vector < Pt2dr > V2;
-#endif
+// #else
+//      ELISE_ASSERT(false,"No Vector interval init, with Visual");
+//      std::vector < Pt3dr > V3;
+//      std::vector < Pt2dr > V2;
+// #endif
      std::list<Pt3dr>   L3(PR3);
      std::list<Pt2dr>   L2(PF2);
 

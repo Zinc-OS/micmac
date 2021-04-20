@@ -10,6 +10,8 @@
 
 
 const double TT_SEUIL_SURF_TRIANGLE = 100;   //min surface du triangle projecte en img
+// => Devenir MD_SEUIL_SURF_TRIANGLE, passer comme parametre d'entree
+
 const double TT_SEUIL_RESOLUTION = DBL_MIN;  //min resolution du triangle reprojecte on img
 const int TT_DEF_SCALE_ZBUF = 2;        //default deZoom pour calculer ZBuffer
 
@@ -19,15 +21,54 @@ class cAppliTaskCorrelByXML;
 class cImgForTiepTri;
 class cTriForTiepTri;
 
+struct cMesureStruct
+{
+    string aNameIm;
+    int aIndImg;
+    vector<Pt2dr> aVPts;
+    vector<string> aNamePt;
+    vector<int> aVIndTri;
+};
+//  ============================= cAppliTaskCorrel ==========================
+class cParamAppliTaskCorrel
+{
+    public:
+    cParamAppliTaskCorrel(cInterfChantierNameManipulateur * aICNM,
+                                                 const std::string & aDir,
+                                                 const std::string & aOri,
+                                                 const std::string & aPatImg,
+                                                 bool & aNoTif,
+                                                 string aMesureXML,
+                                                 bool aInverseOrder
+                            );
+        cInterfChantierNameManipulateur * pICNM;
+        string pDir;
+        string pOri;
+        string pPatImg;
+        bool pNoTif;
+        string pMesureXML;
+        bool aInverseOrder;
+};
+
+// ==========================================================================
+
+
 //  ============================= cAppliTaskCorrel ==========================
 class cAppliTaskCorrel
 {
 public:
+    cAppliTaskCorrel (cInterfChantierNameManipulateur * aICNM,
+                                         const std::string & aDir,
+                                         const std::string & aOri,
+                                         const std::string & aPatImg,
+                                         bool & aNoTif
+                                       );
     cAppliTaskCorrel (cInterfChantierNameManipulateur *,
                        const std::string & aDir,
                        const std::string & anOri,
                        const std::string & aPatImg,
-                       bool &aNoTif
+                       bool &aNoTif,
+                       cParamAppliTaskCorrel * aParam
                       );
     cInterfChantierNameManipulateur * ICNM() {return mICNM;}
     vector<cImgForTiepTri*> VImgs() {return mVImgs;}
@@ -45,6 +86,8 @@ public:
     void SetNInter(int & aNInter, double &aZoomF);
     vector<Video_Win*> & VVW() {return mVVW;}
     vector<cXml_TriAngulationImMaster> & VTask() {return mVTask;}
+    vector<cXml_TriAngulationImMaster_WithPts> & VTaskWithGCP() {return mVTaskWithGCP;}
+
     vector<int> & Cur_Img2nd() {return mCur_Img2nd;}
     void ExportXML(string aDirXML, Pt3dr clIni = Pt3dr(255,255,255));
 
@@ -53,7 +96,19 @@ public:
     double & Rech() {return mRech;}
 
     void ZBuffer();
+    bool & KeepAll2nd(){return mKeepAll2nd;}
 
+    double & SEUIL_SURF_TRIANGLE() {return MD_SEUIL_SURF_TRIANGLE;}
+    int & MethodZBuf() {return mMethodZBuf;}
+
+    void ReadXMLMesurePts(string aGCPMesureXML, vector<cImgForTiepTri *> &mVImgs);
+    bool & WithGCP() {return mWithGCP;}
+
+    void GetIndTriHasGCP();
+
+    bool & SafeZBuf() {return mSafeZBuf;}
+
+    bool & ZBuf_InverseOrder() {return mZBuf_InverseOrder;}
 
 private:
     cInterfChantierNameManipulateur * mICNM;
@@ -80,6 +135,16 @@ private:
     vector< vector<bool> > mVTriValid;
     vector< vector<int> > mVIndTriValid;
     cSauvegardeNamedRel  mRelIm;
+
+    bool   mKeepAll2nd;
+    double MD_SEUIL_SURF_TRIANGLE;
+    int    mMethodZBuf;
+    bool   mWithGCP;
+    vector<cXml_TriAngulationImMaster_WithPts> mVTaskWithGCP;
+
+    bool mSafeZBuf;
+    bool mZBuf_InverseOrder;
+
 
 };
 //  ============================= cAppliTaskCorrelByXML==========================
@@ -141,12 +206,16 @@ public:
         Tiff_Im Tif() {return mTif;}
         Pt2di Sz() {return mSz;}
         cXml_TriAngulationImMaster & Task() {return mTask;}
+        cXml_TriAngulationImMaster_WithPts & TaskWithGCP() {return mTaskWithGCP;}
+
         string & Name() {return mName;}
         int Num() {return mNum;}
 
         vector<bool> &  TriValid() {return mTriValid;}
         vector<int>  &  IndTriValid() {return mIndTriValid;}
+        cMesureStruct & Mesure() {return aMesure;}
 
+        bool & ImgWithGCP() {return mImgWithGCP;}
 
 private:
         int mNum;
@@ -163,6 +232,9 @@ private:
 
         vector<bool>   mTriValid;
         vector<int>    mIndTriValid;
+        cMesureStruct aMesure;
+        cXml_TriAngulationImMaster_WithPts mTaskWithGCP;
+        bool mImgWithGCP;
 };
 
 //  ============================== cTriForTiepTri ==========================
@@ -173,6 +245,7 @@ public:
         //cTriForTiepTri(cAppliTaskCorrel* , triangle * aTri3d, double & ind);
         cTriForTiepTri(cAppliTaskCorrel* , cTri3D aTri3d, int & ind);
         bool reprj(cImgForTiepTri *aImg);
+        bool reprj_pure(cImgForTiepTri * aImg, Pt2dr & P1, Pt2dr & P2, Pt2dr & P3);
         bool rprjOK() {return mrprjOK;}
         Pt2dr Pt1() {return mPt1;}
         Pt2dr Pt2() {return mPt2;}

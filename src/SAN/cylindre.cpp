@@ -83,6 +83,31 @@ cInterfSurfaceAnalytique * SFromFile
        aTag = aSpecTag;
 
 
+    cXmlModeleSurfaceComplexe * aPtrMC = OptionalGetObjFromFile_WithLC<cXmlModeleSurfaceComplexe>
+                                         (
+                                             0,0,
+                                             aFile,
+                                             StdGetFileXMLSpec("SuperposImage.xml"),
+                                             aTag,
+                                             aSpecTag
+                                         );
+    if (aPtrMC==0)
+    {
+           // static cInterfSurfaceAnalytique * FromCCC(const cChCoCart & );
+       // cChCoCart(const Pt3dr &aOri,const Pt3dr&,const Pt3dr&,const Pt3dr&);
+  // bitm.h:        static cChCoCart Xml2El(const cRepereCartesien &);
+
+        cRepereCartesien * aXml_RC = OptStdGetFromPCP(aFile,RepereCartesien);
+        if (aXml_RC)
+        {
+           cChCoCart aCCC = cChCoCart::Xml2El(*aXml_RC);
+           return cInterfSurfaceAnalytique::FromCCC(aCCC);
+        }
+        std::cout << "For file =" << aFile << "\n";
+        ELISE_ASSERT(false,"cannot get repair from file");
+    }
+
+    /*
     cXmlModeleSurfaceComplexe aMC = 
              StdGetObjFromFile<cXmlModeleSurfaceComplexe>
              (
@@ -91,8 +116,9 @@ cInterfSurfaceAnalytique * SFromFile
                   aTag,
                   aSpecTag
              );
+    */
    
-     const cXmlOneSurfaceAnalytique & aSAN = SFromId(aMC,anId);
+     const cXmlOneSurfaceAnalytique & aSAN = SFromId(*aPtrMC,anId);
 
      if (aMemXML) 
         *aMemXML = aSAN;
@@ -1071,6 +1097,7 @@ void cPlyCloud::PutDigit(char aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tCol aCoul,doub
     Pt2di aNb = aSz * aNbByCase;
     double aSc = aLargCar / aNb.x;
 
+// std::cout << "PutDigit " << aP0 <<  " " <<  aLargCar << " \n";
 
     Pt2di aP;
     for (aP.x = 0 ; aP.x <aNb.x ; aP.x++)
@@ -1090,11 +1117,11 @@ void cPlyCloud::PutDigit(char aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tCol aCoul,doub
 
 }
 
-void cPlyCloud::PutStringDigit(std::string aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tCol aCoul,double aLargCar,double aSpace,int aNbByCase)
+void cPlyCloud::PutString(std::string aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tCol aCoul,double aLargCar,double aSpace,int aNbByCase, bool OnlyDigit)
 {
     for (const char * aC = aDigit.c_str(); *aC ; aC++)
     {
-        if (isdigit(*aC))
+        if ((! OnlyDigit) || isdigit(*aC))
         {
            PutDigit(*aC,aP0,aX,aY,aCoul,aLargCar,aNbByCase);
            aP0 = aP0 + aX * (aLargCar+aSpace);
@@ -1102,6 +1129,10 @@ void cPlyCloud::PutStringDigit(std::string aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tC
     }
 }
 
+void cPlyCloud::PutStringDigit(std::string aDigit,Pt3dr aP0,Pt3dr aX,Pt3dr aY,tCol aCoul,double aLargCar,double aSpace,int aNbByCase)
+{
+     PutString(aDigit,aP0,aX,aY,aCoul,aLargCar,aSpace,aNbByCase);
+}
 
 
 void cPlyCloud::PutFile(const std::string & aName)
@@ -1120,6 +1151,8 @@ void cPlyCloud::PutFile(const std::string & aName)
 
 }
 
+
+
 const cPlyCloud::tCol cPlyCloud::White   (255,255,255);
 const cPlyCloud::tCol cPlyCloud::Black   (  0,  0,  0);
 const cPlyCloud::tCol cPlyCloud::Red     (255,  0,  0);
@@ -1132,6 +1165,9 @@ cPlyCloud::tCol cPlyCloud::Gray(const double & aGr)
 {
    int Igr = ElMax(0,ElMin(255,round_ni(255*aGr)));
    return tCol(Igr,Igr,Igr);
+}
+cPlyCloud::tCol cPlyCloud::RandomColor() {
+   return tCol(rand() % 256, rand() % 256, rand() % 256);
 }
 
 
